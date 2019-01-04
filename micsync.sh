@@ -1,35 +1,86 @@
 #!/bin/bash
 
-function getLocations {
+function getLocationFiles {
 	echo "$(find /data/projects/micsync/*.location -type f)"
 }
 
+function isSubpath {
+	local prefix="$1"
+	local path="$2"
+	
+	if [[ $path == $prefix* ]]; then
+		true
+	else
+		false 
+	fi
+}
+
+#echo $(isSubpath "$1" "$2")
+#if $(isSubpath "$1" "$2") ; then
+#	echo "true"
+#else 
+#	echo "false"
+#fi
+
 function foundLocation {
 	local path="$1"
+	local normalised=()
+	local locationFiles=$(getLocationFiles)
+	local foundHere=false
+	local declare -a foundLocationFiles
+	FOUND_WORKING=()
+	FOUNT_BACKUP=()	
+#todo declare as arrays
+#todo if found in many location files, ask which to use
 
-	for location in $(getLocations) ; do
-		source location
+	for locationFile in locationFiles ; do
+		source locationFile
+		foundHere=false
 		for work in "${WORKING[@]}" ; do
-			
+			normalised=$(realpath "$work")	
+			if $(isSubpath "$normalised" "$path") ; then
+				FOUND_WORKING+=($normalised)
+				foundHere=true
+			fi
 		done
+		for backup  in "${BACKUP[@]}" ; do
+			normalised=$(realpath "$backup")	
+			if $(isSubpath "$normalised" "$path") ; then
+				FOUND_BACKUP+=($normalised)
+				foundHere=true
+			fi
+		done
+		if $foundHere ; then
+			foundLocationFiles+=($locationFile)	
+		fi
 	done
 }
 
+function selectItem {
+	local counter=0
+	local input=-1
+	if [[ "$#" -gt 1 ]] ; then
+		for item in "$@" ; do
+			echo "$counter $item"
+			((counter++))
+		done
+		while "$input" -lt 0 -a $ "$input" -lt "$#"
+	else
+		echo hhh
+		echo $1
+		echo hhh2
+	fi
+}
+echo aaaaaaaaaaaa
+echo "$#"
+selectItem "$@"
+echo bbbbbbbbbbbb
+
 function backup {
-	source "$1"
-	shift
-
 	for path in "$@" ; do
-
+		foundLocation "$path"
+		
 	done
-	echo wokrings:
-	echo "${WORKING[@]}"
-  echo baskups
-	echo "${BACKUP[@]}"
-
-	echo "paths:"
-	echo "$@"
-	echo "$ASKMODIFIED"
 }
 
 function backupParse {
