@@ -1,0 +1,9 @@
+#!/bin/bash
+
+WORKING=(
+	./test/w/wsub/
+)
+
+BACKUP=(
+	./test/b/bsub/
+)

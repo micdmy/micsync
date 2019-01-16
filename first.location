@@ -1,0 +1,10 @@
+#!/bin/bash
+
+WORKING=(
+	./test/w/
+	./test/w/
+)
+
+BACKUP=(
+	./test/b/
+)
