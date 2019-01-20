@@ -15,6 +15,17 @@ function isSubpath {
 	fi
 }
 
+function makeRelative {
+	local location="$1"
+	local path="$2"
+	
+	if isSubpath "$location" "$path" ; then
+		relativePath=${path#"$location"}
+	else
+		echo "ASSERTION: Error in micsync script. $path is not $location subpath! Please inform author."
+	fi
+}
+
 #function isNumeric {
 #	if [[ ("$1" =~ ^[0-9]+$) ]]; then
 #		true
@@ -82,10 +93,11 @@ function findInWorkingAndBackup {
 	if [[ ${#foundCfgFiles[@]} -gt 1 ]]; then
 		echo "Choose configuration file:"
 		itemSelection "${foundCfgFiles[@]}"
-		selectedCfgFile=$selectedItem
-		echo "Chosen: $selectedCfgFile"
+		local selectedCfgFile=$selectedItem
+		echo "Configurafion file: $selectedCfgFile"
 	elif [[ ${#foundCfgFiles[@]} -eq 1 ]]; then
-		selectedCfgFile=${foundCfgFiles[0]}
+		local selectedCfgFile=${foundCfgFiles[0]}
+		echo "Configurafion file: $selectedCfgFile"
 	else
 		echo "Path: $path not found in configuration files:"
 		for cfgFile in cfgFiles ; do
@@ -94,19 +106,31 @@ function findInWorkingAndBackup {
 	  exit 	
 	fi
 
+
 	source $selectedCfgFile
+	local i=0
 	for work in "${WORKING[@]}" ; do
 		normalised=$(realpath "$work")	
+		WORKING[i]="$normalised"
+		((i++))
 		if $(isSubpath "$normalised" "$path") ; then
 			FOUND_WORKING+=($normalised)
 		fi
 	done
+	i=0
 	for backup  in "${BACKUP[@]}" ; do
 		normalised=$(realpath "$backup")	
+		BACKUP[i]="$normalised"
+		((i++))
 		if $(isSubpath "$normalised" "$path") ; then
 			FOUND_BACKUP+=($normalised)
 		fi
 	done
+	
+	NUM_W=${#WORKING[@]}
+	NUM_B=${#BACKUP[@]}
+	NUM_F_W=${#FOUND_WORKING[@]}
+	NUM_F_B=${#FOUND_BACKUP[@]}
 }
 
 echo aaaaaaaaaaaa
@@ -131,10 +155,50 @@ echo "found backup $FOUND_BACKUP"
 #	fi
 echo ccccccccccccccccc
 
+function backupRsync {
+	local src=$1
+	local dst=$2
+	if [[ $ASKMODIFIED ]]; then
+		
+	else
+
+	fi	
+}
+
 function backup {
 	for path in "$@" ; do
-		foundLocation "$path"
+
+		findInWorkingAndBackup "$path"
 		
+		if [[ ($NUM_W -eq 0) -o ($NUM_B -eq 0) ]]; then
+			echo "Error: Neither number of WORKING nor BACKUP can	be 0. Currently ${#WORKING[@]}, ${#WORKING[@]}. Repair configuration file."
+		else
+			if [[ ( ($NUM_F_W -eq 0) -a ($NUM_F_B -eq 1) ) -o ( ($NUM_F_W -eq 1) -a ($NUM_F_B -eq 0) ) ]]; then
+				echo "Error: There must be only one working or only one backup defined for path: ${path}. Repair configuration file."
+			else
+				if [[ ($NUM_F_W -eq 1) ]]; then
+					makeRelative "$FOUND_WORKING[0]" "$path"
+					for backup in "${BACKUP[@]}" ; do
+						backupRsync "$path" "${backup}${relativePath}"
+					done
+				elif [[ ($NUM_F_B -eq 1) ]]; then
+					if [[ (${#WORKING[@]} -gt 1) ]]; then
+						echo "Choose which WORKING to use as backup operation source:"
+						itemSelection "${WORKING[@]}"	
+					  local working="$selectedItem"	
+					else 
+ 						local working="${WORKING[0]}"	
+					fi	
+					echo "WORKING: $working"
+					makeRelative "$FOUND_BACKUP[0]" "$path"
+					for backup in "${BACKUP[@]}" ; do
+						backupRsync "${working}${relativePath}" "${backup}${relativePath}"
+					done
+				else
+					echo "ASSERTION: Error in micsync script. NUM_F_W=${NUM_F_W}, NUM_F_B=${NUM_F_B}. Please inform author."
+				fi
+			fi
+		fi	
 	done
 }
 
