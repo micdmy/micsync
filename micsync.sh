@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function getCfgFiles {
-	echo "$(find ./*.location -type f)"
+	echo "$(find ./tests/*.location -type f)"
 }
 
 function isSubpath {
@@ -26,21 +26,26 @@ function makeRelative {
 	fi
 }
 
-#function isNumeric {
-#	if [[ ("$1" =~ ^[0-9]+$) ]]; then
-#		true
-#	else
-#		false
-#	fi
-#}
-
-#echo $(isSubpath "$1" "$2")
-#if $(isSubpath "$1" "$2") ; then
-#	echo "true"
-#else 
-#	echo "false"
-#fi
-
+function normalise {
+	local pth="$1"
+	local firstChar=${pth:0:1}	
+	
+	if [[ $firstChar == '"' ]]; then
+		pth="${pth%\"}"
+		pth="${pth#\"}"
+		echo "$pth"
+		echo "DONEXX"
+		local len=${#pth}
+		local elem=${#pth[*]}
+		echo "LEN=$len ELEM=$elem"
+		((len=$len*$elem-2))
+		echo "LEN=$len"
+		pth=${pth:1:len}
+		echo "pthXX=$pth"
+	fi
+	echo "$pth"
+	echo "$(realpath "$pth")"
+}
 
 function itemSelection {
 	local counter=0
@@ -74,13 +79,13 @@ function findInWorkingAndBackup {
 		foundInWorking=false
 		foundInBackup=false
 		for work in "${WORKING[@]}" ; do
-			normalised=$(realpath "$work")	
+			normalised=$(normalise "$work")	
 			if $(isSubpath "$normalised" "$path") ; then
 				foundInWorking=true
 			fi
 		done
 		for backup  in "${BACKUP[@]}" ; do
-			normalised=$(realpath "$backup")	
+			normalised=$(normalise "$backup")	
 			if $(isSubpath "$normalised" "$path") ; then
 				foundInBackup=true
 			fi
@@ -110,7 +115,7 @@ function findInWorkingAndBackup {
 	source $selectedCfgFile
 	local i=0
 	for work in "${WORKING[@]}" ; do
-		normalised=$(realpath "$work")	
+		normalised=$(normalise "$work")	
 		WORKING[i]="$normalised"
 		((i++))
 		if $(isSubpath "$normalised" "$path") ; then
@@ -119,7 +124,7 @@ function findInWorkingAndBackup {
 	done
 	i=0
 	for backup  in "${BACKUP[@]}" ; do
-		normalised=$(realpath "$backup")	
+		normalised=$(normalise "$backup")	
 		BACKUP[i]="$normalised"
 		((i++))
 		if $(isSubpath "$normalised" "$path") ; then
@@ -133,47 +138,31 @@ function findInWorkingAndBackup {
 	NUM_F_B=${#FOUND_BACKUP[@]}
 }
 
-echo aaaaaaaaaaaa
-echo $1
-givenPath=$(realpath "$1")
-echo $givenPath
-findInWorkingAndBackup "$givenPath"
-echo bbbbbbbbbbbb
-echo "found working $FOUND_WORKING"
-echo "found backup $FOUND_BACKUP"
-#itemSelection "$@"
-#echo "selectedItems $selectedItems"
-#isNumeric "$1"
-#	echo "$1"
-#	pppp=$(isNumeric "$1")
-#	echo utput
-#	echo "$pppp"
-#	if $(isNumeric "$1") ; then
-#		echo tak
-#	else 
-#		echo nie
-#	fi
-echo ccccccccccccccccc
-
 function backupRsync {
 	local src=$1
 	local dst=$2
 	if [[ $ASKMODIFIED ]]; then
-		
+		echo "Func backupRsync askmodified src=${src}, dst=${dst}."
 	else
-
+		echo "Func backupRsync src=${src}, dst=${dst}."
 	fi	
 }
 
 function backup {
 	for path in "$@" ; do
-
+		echo "$path"
+		path=$(normalise $path)
+		echo "TEST PATH"
+		echo "$path"
 		findInWorkingAndBackup "$path"
-		
-		if [[ ($NUM_W -eq 0) -o ($NUM_B -eq 0) ]]; then
+	echo "TEST"
+	echo "$NUM_W $NUM_B"	
+	echo "$NUM_F_W $NUM_F_B"	
+
+		if [[ ($NUM_W -eq 0) || ($NUM_B -eq 0) ]]; then
 			echo "Error: Neither number of WORKING nor BACKUP can	be 0. Currently ${#WORKING[@]}, ${#WORKING[@]}. Repair configuration file."
 		else
-			if [[ ( ($NUM_F_W -eq 0) -a ($NUM_F_B -eq 1) ) -o ( ($NUM_F_W -eq 1) -a ($NUM_F_B -eq 0) ) ]]; then
+			if [[ ( ($NUM_F_W -eq 0) && ($NUM_F_B -eq 1) ) || ( ($NUM_F_W -eq 1) && ($NUM_F_B -eq 0) ) ]]; then
 				echo "Error: There must be only one working or only one backup defined for path: ${path}. Repair configuration file."
 			else
 				if [[ ($NUM_F_W -eq 1) ]]; then
@@ -218,9 +207,7 @@ function backupParse {
 			;;
 		esac
 	done
-	for location in $(getLocations) ; do
-		backup "$location" "${paths[@]}"
-	done
+	backup "${paths[@]}"
 }
 
 function workParse {
