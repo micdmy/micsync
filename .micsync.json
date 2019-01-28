@@ -1,0 +1,22 @@
+{
+		"configs": [ 
+			{
+				"name": "outer config",
+				"work": [
+					"./tests/d1"
+				],
+				"backup": [
+					"./tests/d2"
+				]
+			},
+			{
+				"name": "inner config",
+				"work": [
+					"./tests/d1/d1-2/"
+				],
+				"backup": [
+					"./tests/d2/d2-2/"
+				]
+			}	
+		]
+}
