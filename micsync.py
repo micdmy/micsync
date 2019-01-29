@@ -14,16 +14,20 @@ def parseInputArguments(arguments):
              Mode('tree', 'm')]
     for mode in modes:
         try:
-            opts, args = getopt.getopt(argv, mode.options, [mode.name])
-            return mode
-        except Exception:
+            opts, args = getopt.getopt(arguments[1:], mode.options, [mode.name])
+            retMode = mode
+            retMode.options = [x[0][1] for x in opts if (len(x[0]) == 2
+                                                     and x[0][0] == '-'
+                                                     and  x[0][1] in mode.options)]
+            return retMode
+        except Exception as e:
             pass
     print('micsync.py: Valid syntax is:')
     for mode in modes:
         optString = ''
         for char in mode.options:
-            optSting += ' [-' + char + ']'
-        print('--' + mode.name + optString)
+            optString += ' [-' + char + ']'
+        print(arguments[0] + ' --' + mode.name + optString)
     return None
 
 def readConfigurations(configFileName):
@@ -34,10 +38,13 @@ def readConfigurations(configFileName):
     return None
 
 def main(argv):
-    parseInputArguments(argv)
+    mode = parseInputArguments(argv)
+    if mode is None:
+        return -1
+    print("MODE:" + str(vars(mode)))
     print("READING JSON:")
     print(readConfigurations('./.micsync.json'))
     
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main(sys.argv)
