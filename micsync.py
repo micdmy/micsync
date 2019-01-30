@@ -1,6 +1,6 @@
 #/usr/bin/python
 
-import sys, getopt, json
+import sys, getopt, json, os.path
 
 class Mode:
     def __init__(self, name, options):
@@ -19,7 +19,10 @@ def parseInputArguments(arguments):
             retMode.options = [x[0][1] for x in opts if (len(x[0]) == 2
                                                      and x[0][0] == '-'
                                                      and  x[0][1] in mode.options)]
-            return retMode
+
+            paths = [ arg for arg in args if ]
+            if args:
+                return retMode, args
         except Exception as e:
             pass
     print('micsync.py: Valid syntax is:')
@@ -27,8 +30,8 @@ def parseInputArguments(arguments):
         optString = ''
         for char in mode.options:
             optString += ' [-' + char + ']'
-        print(arguments[0] + ' --' + mode.name + optString)
-    return None
+        print(arguments[0] + ' --' + mode.name + optString + ' path...')
+    return None, None
 
 def readConfigurations(configFileName):
     with open(configFileName, 'r') as configFile:
@@ -38,8 +41,8 @@ def readConfigurations(configFileName):
     return None
 
 def main(argv):
-    mode = parseInputArguments(argv)
-    if mode is None:
+    mode, paths = parseInputArguments(argv)
+    if mode is None or paths is None:
         return -1
     print("MODE:" + str(vars(mode)))
     print("READING JSON:")
