@@ -20,10 +20,10 @@ def parseInputArguments(arguments):
                                                      and x[0][0] == '-'
                                                      and  x[0][1] in mode.options)]
 
-            paths = [ arg for arg in args if ]
-            if args:
+            paths = [ os.path.abspath(arg) for arg in args if os.path.exists(arg) ]
+            if paths:
                 return retMode, args
-        except Exception as e:
+        except getopt.GetoptError:
             pass
     print('micsync.py: Valid syntax is:')
     for mode in modes:
@@ -45,6 +45,7 @@ def main(argv):
     if mode is None or paths is None:
         return -1
     print("MODE:" + str(vars(mode)))
+    print("PATHS:" + str(paths))
     print("READING JSON:")
     print(readConfigurations('./.micsync.json'))
     
