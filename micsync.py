@@ -17,6 +17,11 @@ def printIndent(msg):
 def allEqual(elements):
     return len(set(elements)) in (0, 1)
 
+def xor(a, b)
+    a = bool(a)
+    b = bool(b)
+    return (a and not b) or (not a and b)
+
 def parseInputArguments(arguments):
     modes = [Mode('backup', 'm'),
              Mode('work', 'mdD'),
@@ -65,6 +70,46 @@ def filterConfig(config, path):
     config['backup'] = [bPath for bPath in config['backup'] if isSubpath(bPath, path)]
     return config
 
+def configEmpty(config)
+    if any([(not con['work'] and not pathConf['backup']) for pathConf in pathsConfig]):
+
+def userSelectConfig(configs):
+    if not configs:
+        return
+    if len(configs) = 1:
+        return configs[0]
+    print('Many configs applicable, select one (Q to cancel and exit):'
+    configNumber = 0
+    for config in configs:
+        print('[' + str(configNumber) + '] ' + config.name)
+        configNumber += 1
+    while True:
+        userInput = raw_input()
+        if userInput.isnumeric() and int(userInput) in (0, len(config) - 1):
+            return config[int(userInput)]    
+        elif userInput.isalpha() and userInput in 'Qq':
+            return 
+
+def filterApplicableConfigs(configs, paths):
+    applicableConfigs = []
+    for config in configs:
+        pathsConfig = [filterConfig(config, path) for path in paths]
+        if not allEqual(pathsConfig):
+            printError('In config: ' + config.name + ':')
+            printIndent('All given paths should be the same WORK xor BACKUP')
+            return
+        elif not pathsConfig:
+            pC = pathsConfig[0]
+            if pC['work'] and pC['backup']:
+                printError('In config: ' + config.name + ':')
+                printIndent('Given paths cannot be both in WORK and BACKUP.')
+                return
+            elif xor(pC['work'], pC['backup']):
+                applicableConfigs.append(pC)
+    if not applicableConfigs:
+        printError('None of given paths is in WORK or BACKUP')
+    return applicableConfigs
+
 def main(argv):
     mode, paths = parseInputArguments(argv)
     if not mode or not paths :
@@ -72,26 +117,14 @@ def main(argv):
     configs = readConfigurations('./.micsync.json')
     if not configs:
         return -1
-    
-    for config in configs:
-        pathsConfig = [filterConfig(config, path) for path in paths]
-
-////////////////////////////////////////////////////////////////
-TODO refactor
-    filtered = [filterConfig(configs, path) for path in paths]
-    print(type(filtered))
-    print(type(filtered[0]))
-
-    print(str(filtered))
-    if any([(not f['work'] and not f['backup']) for f in filtered]):
-        printError('All of paths given should be configured as WORK xor BACKUP.')
-    elif not allEqual(filtered):
-        printError('All given paths should be in the same WORK xor BACKUP.')
-    elif filtered[0]['work'] and filtered[0]['backup']:
-        printError('Given paths cannot be both in WORK and BACKUP.') 
-    else:
-        print('ALL OK')
-/////////////////////////////////////////////////////////////////
+    applicables = filterApplicableConfigs(configs, paths)
+    if not applicables:
+        return -1
+    applicable = userSelectConfig(applicables)
+    if not applicable:
+        return -1
+        
+        
     print(str((filtered)))
     print("MODE:" + str(vars(mode)))
     print("PATHS:" + str(paths))
