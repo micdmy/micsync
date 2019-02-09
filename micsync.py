@@ -14,10 +14,16 @@ def printError(msg):
 def printIndent(msg):
     print('    ' + str(msg))
 
-def allEqual(elements):
-    return len(set(elements)) in (0, 1)
+def configsEqual(configs):
+    if not configs:
+        return True
+    c = configs[0]
+    for config in configs:
+        if c != config:
+            return False
+    return True
 
-def xor(a, b)
+def xor(a, b):
     a = bool(a)
     b = bool(b)
     return (a and not b) or (not a and b)
@@ -66,27 +72,29 @@ def isSubpath(basepath, subpath):
     return  basepath == (os.path.commonpath([basepath, subpath]))
     
 def filterConfig(config, path):
-    config['work'] = [wPath for wPath in config['work'] if isSubpath(wPath, path)]
-    config['backup'] = [bPath for bPath in config['backup'] if isSubpath(bPath, path)]
+    config['fWork'] = [wPath for wPath in config['work'] if isSubpath(wPath, path)]
+    config['fBackup'] = [bPath for bPath in config['backup'] if isSubpath(bPath, path)]
     return config
 
-def configEmpty(config)
-    if any([(not con['work'] and not pathConf['backup']) for pathConf in pathsConfig]):
-
-def userSelectConfig(configs):
+def userSelectConfig(configs,):
     if not configs:
         return
-    if len(configs) = 1:
+    if len(configs) == 1:
         return configs[0]
-    print('Many configs applicable, select one (Q to cancel and exit):'
+    print('Many configs applicable, select one (Q to cancel and exit):')
     configNumber = 0
     for config in configs:
-        print('[' + str(configNumber) + '] ' + config.name)
+        if config['fWork']:
+            print('[' + str(configNumber) + '] in WORK of ' + config['name'] + ': ')
+        if config['fBackup']:
+            print('[' + str(configNumber) + '] in BACKUP of ' + config['name'] + ': ')
+        print('   WORK:   ' + str(config['work'])) 
+        print('   BACKUP: ' + str(config['backup']))
         configNumber += 1
     while True:
-        userInput = raw_input()
-        if userInput.isnumeric() and int(userInput) in (0, len(config) - 1):
-            return config[int(userInput)]    
+        userInput = input('[0-' + str(len(configs) - 1) + ']')
+        if userInput.isnumeric() and int(userInput) in (0, len(configs) - 1):
+            return configs[int(userInput)]    
         elif userInput.isalpha() and userInput in 'Qq':
             return 
 
@@ -94,17 +102,17 @@ def filterApplicableConfigs(configs, paths):
     applicableConfigs = []
     for config in configs:
         pathsConfig = [filterConfig(config, path) for path in paths]
-        if not allEqual(pathsConfig):
-            printError('In config: ' + config.name + ':')
+        if not configsEqual(pathsConfig):
+            printError('In config: ' + config['name'] + ':')
             printIndent('All given paths should be the same WORK xor BACKUP')
             return
-        elif not pathsConfig:
+        elif pathsConfig:
             pC = pathsConfig[0]
-            if pC['work'] and pC['backup']:
-                printError('In config: ' + config.name + ':')
+            if pC['fWork'] and pC['fBackup']:
+                printError('In config: ' + config['name'] + ':')
                 printIndent('Given paths cannot be both in WORK and BACKUP.')
                 return
-            elif xor(pC['work'], pC['backup']):
+            elif xor(pC['fWork'], pC['fBackup']):
                 applicableConfigs.append(pC)
     if not applicableConfigs:
         printError('None of given paths is in WORK or BACKUP')
@@ -124,8 +132,8 @@ def main(argv):
     if not applicable:
         return -1
         
+    print(str(applicable))
         
-    print(str((filtered)))
     print("MODE:" + str(vars(mode)))
     print("PATHS:" + str(paths))
     print("READING JSON:")
