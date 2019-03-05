@@ -1,12 +1,12 @@
 {
-			"configs": [ 
-			{
+			"configs": [ {
 				"name": "outer config",
 				"work": [
-					"./tests/d1"
+					"./tests/d1/d1-2/",
+					"./tests/d1/d1-1/"
 				],
 				"backup": [
-					"./tests/d2"
+					"./tests/d2/d2-1/"
 				]
 			},
 			{

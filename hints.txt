@@ -1,0 +1,369 @@
+
+Use "rsync --daemon --help" to see the daemon-mode command-line options.
+Please see the rsync(1) and rsyncd.conf(5) man pages for full documentation.
+See http://rsync.samba.org/ for updates, bug reports, and answers
+[mic@DELLARCH tests]$ 
+[mic@DELLARCH tests]$ 
+[mic@DELLARCH tests]$ tree -C
+.
+├── d1
+│   ├── d1-1
+│   │   └── d1-1-item
+│   ├── d1-2
+│   │   ├── d1-2-item A
+│   │   └── d1-2-item B
+│   │       └── d1-item B-item A
+│   ├── d1-item A
+│   │   └── d1-item A-item A
+│   └── d1-item B
+├── d2
+│   ├── d2-1
+│   └── d2-2
+└── test-backup1.location
+
+8 directories, 6 files
+[mic@DELLARCH tests]$ touch ./d1/d1-1/a.1
+[mic@DELLARCH tests]$ touch ./d1/d1-1/a.2
+[mic@DELLARCH tests]$ touch ./d1/d1-1/a.3
+[mic@DELLARCH tests]$ tree -C
+.
+├── d1
+│   ├── d1-1
+│   │   ├── a.1
+│   │   ├── a.2
+│   │   ├── a.3
+│   │   └── d1-1-item
+│   ├── d1-2
+│   │   ├── d1-2-item A
+│   │   └── d1-2-item B
+│   │       └── d1-item B-item A
+│   ├── d1-item A
+│   │   └── d1-item A-item A
+│   └── d1-item B
+├── d2
+│   ├── d2-1
+│   └── d2-2
+└── test-backup1.location
+
+8 directories, 9 files
+[mic@DELLARCH tests]$ rsync -avPh ./d1/d1-1/a.1 ./d1/d1-1/
+./d1/d1-1/a.1         ./d1/d1-1/a.2         ./d1/d1-1/a.3         ./d1/d1-1/d1-1-item   
+[mic@DELLARCH tests]$ rsync -avPh ./d1/d1-1/a.1 ./d1/d1-1/
+./d1/d1-1/a.1         ./d1/d1-1/a.2         ./d1/d1-1/a.3         ./d1/d1-1/d1-1-item   
+[mic@DELLARCH tests]$ rsync -avPh ./d1/d1-1/a.1 ./d1/d1-1/a.2 ./d2
+sending incremental file list
+a.1
+              0 100%    0.00kB/s    0:00:00 (xfr#1, to-chk=1/2)
+a.2
+              0 100%    0.00kB/s    0:00:00 (xfr#2, to-chk=0/2)
+
+sent 150 bytes  received 54 bytes  408.00 bytes/sec
+total size is 0  speedup is 0.00
+[mic@DELLARCH tests]$ tree -C
+.
+├── d1
+│   ├── d1-1
+│   │   ├── a.1
+│   │   ├── a.2
+│   │   ├── a.3
+│   │   └── d1-1-item
+│   ├── d1-2
+│   │   ├── d1-2-item A
+│   │   └── d1-2-item B
+│   │       └── d1-item B-item A
+│   ├── d1-item A
+│   │   └── d1-item A-item A
+│   └── d1-item B
+├── d2
+│   ├── a.1
+│   ├── a.2
+│   ├── d2-1
+│   └── d2-2
+└── test-backup1.location
+
+8 directories, 11 files
+[mic@DELLARCH tests]$ rsync -avPh ./d1/d1-1/a.1 ./d1/d1-1/a.2 ./d2/d1-1
+sending incremental file list
+created directory ./d2/d1-1
+a.1
+              0 100%    0.00kB/s    0:00:00 (xfr#1, to-chk=1/2)
+a.2
+              0 100%    0.00kB/s    0:00:00 (xfr#2, to-chk=0/2)
+
+sent 150 bytes  received 86 bytes  472.00 bytes/sec
+total size is 0  speedup is 0.00
+[mic@DELLARCH tests]$ tree -C
+.
+├── d1
+│   ├── d1-1
+│   │   ├── a.1
+│   │   ├── a.2
+│   │   ├── a.3
+│   │   └── d1-1-item
+│   ├── d1-2
+│   │   ├── d1-2-item A
+│   │   └── d1-2-item B
+│   │       └── d1-item B-item A
+│   ├── d1-item A
+│   │   └── d1-item A-item A
+│   └── d1-item B
+├── d2
+│   ├── a.1
+│   ├── a.2
+│   ├── d1-1
+│   │   ├── a.1
+│   │   └── a.2
+│   ├── d2-1
+│   └── d2-2
+└── test-backup1.location
+
+9 directories, 13 files
+[mic@DELLARCH tests]$ rm -r d2/d1-1
+[mic@DELLARCH tests]$ rm  d2/a.1
+[mic@DELLARCH tests]$ rm  d2/a.2
+[mic@DELLARCH tests]$ ls
+d1  d2  test-backup1.location
+[mic@DELLARCH tests]$ t
+[mic@DELLARCH tests]$ ttree -C
+bash: ttree: command not found
+[mic@DELLARCH tests]$ tree -C
+.
+├── d1
+│   ├── d1-1
+│   │   ├── a.1
+│   │   ├── a.2
+│   │   ├── a.3
+│   │   └── d1-1-item
+│   ├── d1-2
+│   │   ├── d1-2-item A
+│   │   └── d1-2-item B
+│   │       └── d1-item B-item A
+│   ├── d1-item A
+│   │   └── d1-item A-item A
+│   └── d1-item B
+├── d2
+│   ├── d2-1
+│   └── d2-2
+└── test-backup1.location
+
+8 directories, 9 files
+[mic@DELLARCH tests]$ mkdir d1/d1-1/A
+[mic@DELLARCH tests]$ mkdir d1/d1-1/B
+[mic@DELLARCH tests]$ touch d1/d1-1/B/b.1
+[mic@DELLARCH tests]$ touch d1/d1-1/B/b.2
+[mic@DELLARCH tests]$ tree -C
+.
+├── d1
+│   ├── d1-1
+│   │   ├── A
+│   │   ├── a.1
+│   │   ├── a.2
+│   │   ├── a.3
+│   │   ├── B
+│   │   │   ├── b.1
+│   │   │   └── b.2
+│   │   └── d1-1-item
+│   ├── d1-2
+│   │   ├── d1-2-item A
+│   │   └── d1-2-item B
+│   │       └── d1-item B-item A
+│   ├── d1-item A
+│   │   └── d1-item A-item A
+│   └── d1-item B
+├── d2
+│   ├── d2-1
+│   └── d2-2
+└── test-backup1.location
+
+[mic@DELLARCH tests]$ rsync -avPh ./d1/d1-1/a.1 ./d1/d1-1/a.2 ./d1/d1-1/A ./d1/d1-1/B/b.1 ./d2/d1-1
+sending incremental file list
+created directory ./d2/d1-1
+a.1
+              0 100%    0.00kB/s    0:00:00 (xfr#1, to-chk=3/4)
+a.2
+              0 100%    0.00kB/s    0:00:00 (xfr#2, to-chk=2/4)
+b.1
+              0 100%    0.00kB/s    0:00:00 (xfr#3, to-chk=1/4)
+A/
+
+sent 249 bytes  received 113 bytes  724.00 bytes/sec
+total size is 0  speedup is 0.00
+[mic@DELLARCH tests]$ tree -C
+.
+├── d1
+│   ├── d1-1
+│   │   ├── A
+│   │   ├── a.1
+│   │   ├── a.2
+│   │   ├── a.3
+│   │   ├── B
+│   │   │   ├── b.1
+│   │   │   └── b.2
+│   │   └── d1-1-item
+│   ├── d1-2
+│   │   ├── d1-2-item A
+│   │   └── d1-2-item B
+│   │       └── d1-item B-item A
+│   ├── d1-item A
+│   │   └── d1-item A-item A
+│   └── d1-item B
+├── d2
+│   ├── d1-1
+│   │   ├── A
+│   │   ├── a.1
+│   │   ├── a.2
+│   │   └── b.1
+│   ├── d2-1
+│   └── d2-2
+└── test-backup1.location
+
+12 directories, 14 files
+[mic@DELLARCH tests]$ rm -r d2/d1-1
+[mic@DELLARCH tests]$ tree -C
+.
+├── d1
+│   ├── d1-1
+│   │   ├── A
+│   │   ├── a.1
+│   │   ├── a.2
+│   │   ├── a.3
+│   │   ├── B
+│   │   │   ├── b.1
+│   │   │   └── b.2
+│   │   └── d1-1-item
+│   ├── d1-2
+│   │   ├── d1-2-item A
+│   │   └── d1-2-item B
+│   │       └── d1-item B-item A
+│   ├── d1-item A
+│   │   └── d1-item A-item A
+│   └── d1-item B
+├── d2
+│   ├── d2-1
+│   └── d2-2
+└── test-backup1.location
+
+10 directories, 11 files
+[mic@DELLARCH tests]$ rsync -avPh ./d1/d1-1/a.1 ./d1/d1-1/a.2 ./d1/d1-1/A ./d1/d1-1/B ./d2/d1-1
+sending incremental file list
+created directory ./d2/d1-1
+a.1
+              0 100%    0.00kB/s    0:00:00 (xfr#1, to-chk=5/6)
+a.2
+              0 100%    0.00kB/s    0:00:00 (xfr#2, to-chk=4/6)
+A/
+B/
+B/b.1
+              0 100%    0.00kB/s    0:00:00 (xfr#3, to-chk=1/6)
+B/b.2
+              0 100%    0.00kB/s    0:00:00 (xfr#4, to-chk=0/6)
+
+sent 330 bytes  received 140 bytes  940.00 bytes/sec
+total size is 0  speedup is 0.00
+[mic@DELLARCH tests]$ tree -C
+.
+├── d1
+│   ├── d1-1
+│   │   ├── A
+│   │   ├── a.1
+│   │   ├── a.2
+│   │   ├── a.3
+│   │   ├── B
+│   │   │   ├── b.1
+│   │   │   └── b.2
+│   │   └── d1-1-item
+│   ├── d1-2
+│   │   ├── d1-2-item A
+│   │   └── d1-2-item B
+│   │       └── d1-item B-item A
+│   ├── d1-item A
+│   │   └── d1-item A-item A
+│   └── d1-item B
+├── d2
+│   ├── d1-1
+│   │   ├── A
+│   │   ├── a.1
+│   │   ├── a.2
+│   │   └── B
+│   │       ├── b.1
+│   │       └── b.2
+│   ├── d2-1
+│   └── d2-2
+└── test-backup1.location
+
+13 directories, 15 files
+[mic@DELLARCH tests]$ rm -r d2/d1-1
+[mic@DELLARCH tests]$ tree -C
+.
+├── d1
+│   ├── d1-1
+│   │   ├── A
+│   │   ├── a.1
+│   │   ├── a.2
+│   │   ├── a.3
+│   │   ├── B
+│   │   │   ├── b.1
+│   │   │   └── b.2
+│   │   └── d1-1-item
+│   ├── d1-2
+│   │   ├── d1-2-item A
+│   │   └── d1-2-item B
+│   │       └── d1-item B-item A
+│   ├── d1-item A
+│   │   └── d1-item A-item A
+│   └── d1-item B
+├── d2
+│   ├── d2-1
+│   └── d2-2
+└── test-backup1.location
+
+10 directories, 11 files
+[mic@DELLARCH tests]$ rsync -avPh ./d1/d1-1/a.1 ./d1/d1-1/a.2 ./d1/d1-1/A ./d1/d1-1/B/ ./d2/d1-1
+sending incremental file list
+created directory ./d2/d1-1
+./
+a.1
+              0 100%    0.00kB/s    0:00:00 (xfr#1, to-chk=4/6)
+a.2
+              0 100%    0.00kB/s    0:00:00 (xfr#2, to-chk=3/6)
+b.1
+              0 100%    0.00kB/s    0:00:00 (xfr#3, to-chk=2/6)
+b.2
+              0 100%    0.00kB/s    0:00:00 (xfr#4, to-chk=1/6)
+A/
+
+sent 316 bytes  received 135 bytes  902.00 bytes/sec
+total size is 0  speedup is 0.00
+[mic@DELLARCH tests]$ tree -C
+.
+├── d1
+│   ├── d1-1
+│   │   ├── A
+│   │   ├── a.1
+│   │   ├── a.2
+│   │   ├── a.3
+│   │   ├── B
+│   │   │   ├── b.1
+│   │   │   └── b.2
+│   │   └── d1-1-item
+│   ├── d1-2
+│   │   ├── d1-2-item A
+│   │   └── d1-2-item B
+│   │       └── d1-item B-item A
+│   ├── d1-item A
+│   │   └── d1-item A-item A
+│   └── d1-item B
+├── d2
+│   ├── d1-1
+│   │   ├── A
+│   │   ├── a.1
+│   │   ├── a.2
+│   │   ├── b.1
+│   │   └── b.2
+│   ├── d2-1
+│   └── d2-2
+└── test-backup1.location
+
+12 directories, 15 files
+[mic@DELLARCH tests]$ 
+
