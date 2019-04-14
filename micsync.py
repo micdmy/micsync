@@ -1,6 +1,6 @@
 #/usr/bin/python
 
-import sys, getopt, json, os.path
+import sys, getopt, json, os.path, subprocess
 
 def userSelect(numElem):
     while True:
@@ -9,6 +9,15 @@ def userSelect(numElem):
             return int(userInput)
         elif userInput.isalpha() and userInput in 'Qq':
             return 
+
+def userYes(msg):
+    while True:
+        userInput = input(msg + " [Y/N]")
+        if userInput.isalpha():
+            if userInput in "Yy":
+                return True
+            elif userInput in "Nn":
+                return False
 
 def userSelectWork(work):
     if not work:
@@ -32,12 +41,42 @@ def prependRoot(root, paths):
 def makeRelative(root, paths):
     return [os.path.relpath(p, root) for p in paths]
 
-def normalize(path):
-    if isinstance(path, list):
-        return [os.path.realpath(os.path.abspath(p)) for p in path]
-    else:
-        return os.path.realpath(os.path.abspath(path))
+def normalizeList(paths):
+    return [os.path.realpath(os.path.abspath(p)) for p in paths]
 
+def normalize(path):
+    return os.path.realpath(os.path.abspath(path))
+
+def appendSlash(path):
+    if path.strip()[-1] != '/':
+        return path + '/'
+    return path
+
+def printError(msg):
+    print('micsync.py: Error: ' + str(msg)) 
+
+def printInfo(msg):
+    print('micsync.py: ' + str(msg))
+
+def printIndent(msg):
+    print('    ' + str(msg))
+
+class Rsync:
+    def _pathsForRsync(srcsLst, dst):
+        return "".join((" " + s) for s in srcsLst) + " " + dst
+    
+    def shallModifyExisting(srcsLst, dst):
+        printInfo("THIS FILES WILL BE MODIFIED in \"" + dst + "\":") 
+        command = "rsync -navhP --existing" + Rsync._pathsForRsync(srcsLst, dst)
+        subprocess.run(command, shell=True)
+        return userYes("MODIFY FILES LISTED ABOVE?")
+
+    def backup(srcsLst, dst):
+        printInfo("BACKUP to \"" + dst + "\":") 
+        command = "rsync -avhP" + Rsync._pathsForRsync(srcsLst, dst)
+        subprocess.run(command, shell=True)
+
+        
 class Mode:
     def __init__(self, name, options):
         self.name = name
@@ -46,6 +85,8 @@ class Mode:
 class BackupMode(Mode):
     def __init__(self, name, options):
         super().__init__(name, options)
+        self.dsts = []
+        self.srcs = []
     def loadAndCheck(self, applicable):
         self.applicable = applicable
         if self.applicable['fBackup']:
@@ -57,26 +98,37 @@ class BackupMode(Mode):
         if not self.applicable['sWork']:
             return
         return True
-    def perform(self, paths, rootPath):
+    def calculateSrcsAndDsts(self, paths, rootPath):
+        print('origin: ' + self.applicable['pathsOrigin'])
         relPaths = makeRelative(self.applicable['pathsOrigin'], paths)
-        srcs = prependRoot(self.applicable['sWork'], relPaths)
-        relRootPath = makeRelative(self.applicable['pathsOrigin'], rootPath)
-        for backup in getAccesiblePaths(self.applicable['backup']):
+        print('relPaths' + str(relPaths))
+        self.srcs = prependRoot(self.applicable['sWork'], relPaths)
+        self.srcs = normalizeList(self.srcs)
+        print('root: ' + rootPath)
+        if(self.srcs[0] == self.applicable['sWork']):
+            relRootPath = '.'
+            self.srcs[0] = appendSlash(self.srcs[0])
+        else:
+            relRootPath = makeRelative(self.applicable['pathsOrigin'], [rootPath])
+        print('relRootPath' + str(relRootPath))
+        for  backup in getAccesiblePaths(self.applicable['backup']):
             dst = prependRoot(backup, relRootPath)[0]
-            print('SRCS: ' + str(srcs))
-            print('DST: ' + dst)
-        return True
+            dst =  appendSlash(normalize(dst))
+            self.dsts.append(dst)
+    def perform(self):
+        print('SRCS: ' + str(self.srcs))
+        print('DSTS: ' + str(self.dsts))
+        for dst in self.dsts:
+            if(Rsync.shallModifyExisting(self.srcs, dst)):
+                Rsync.backup(self.srcs, dst)
+
     
 modes = [BackupMode('backup', 'm'),
          Mode('work', 'mdD'),
          Mode('transfer', 'mdD'),
          Mode('tree', 'm')]
 
-def printError(msg):
-    print('micsync.py: Error: ' + str(msg)) 
 
-def printIndent(msg):
-    print('    ' + str(msg))
 
 def configsEqual(configs):
     if not configs:
@@ -92,34 +144,52 @@ def xor(a, b):
     b = bool(b)
     return (a and not b) or (not a and b)
 
-def parseInputArguments(arguments):
-    for mode in modes:
-        try:
-            opts, args = getopt.getopt(arguments[1:], mode.options, [mode.name])
-            retMode = mode
-            retMode.options = [x[0][1] for x in opts if (len(x[0]) == 2
-                                                     and x[0][0] == '-'
-                                                     and  x[0][1] in mode.options)]
-            paths = normalize(args)
-            print('PPAATTHHSS: ' + str(paths))
-            for path in paths:
-                if not os.path.exists(path):
-                    printError('Invalid path: ' + path)
-                    return None, None, None
-            rootPath = os.path.split(paths[0])[0]
-            for path in paths:
-                if rootPath != os.path.split(path)[0]:
-                    printError('Given paths must be in the same location')
-                    return None, None, None
-            return retMode, paths, rootPath
-        except getopt.GetoptError:
-            pass
+def printValidSyntaxInfo(programName):
     printError('Valid syntax is:')
     for mode in modes:
         optString = ''
         for char in mode.options:
             optString += ' [-' + char + ']'
-        printIndent(arguments[0] + ' --' + mode.name + optString + ' path...')
+        printIndent(programName + ' --' + mode.name + optString + ' path...')
+
+def parseInputArguments(arguments):
+    retMode = None
+    for mode in modes:
+        print("lOOP")
+        try:
+            opts, args = getopt.getopt(arguments[1:], mode.options, [mode.name])
+            opts = [opt[0] for opt in opts]
+            print("OPTS: " + str(opts))
+            print("ARGS: " + str(args))
+            if ("--" + mode.name) in opts: 
+                print("I--" + mode.name)
+                retMode = mode
+                retMode.options = [x[1] for x in opts if (len(x) == 2
+                                                         and x[0] == '-'
+                                                         and  x[1] in mode.options)]
+                paths = normalizeList(args)
+                print('PPAATTHHSS: ' + str(paths))
+                if not paths:
+                    printValidSyntaxInfo(arguments[0])
+                    return None, None, None
+                for path in paths:
+                    if not os.path.exists(path):
+                        printError('Invalid path: ' + path)
+                        return None, None, None
+                rootPath = os.path.split(paths[0])[0]
+                for path in paths:
+                    if rootPath != os.path.split(path)[0]:
+                        printError('Given paths must be in the same location')
+                        return None, None, None
+                
+                print("MODE: " + str(retMode))
+                return retMode, paths, rootPath
+            else:
+                print("E--" + mode.name)
+        except getopt.GetoptError:
+            pass
+    print("getopt.Ge")
+    printValidSyntaxInfo(arguments[0])
     return None, None, None
 
 def readConfigurations(configFileName):
@@ -151,26 +221,27 @@ def verifyConfigurations(configs, configFileName):
             printError("Deficient JSON config file: " + configFileName + ":")
             printIndent('config \"' + str(i) + '\" has no field \"backup\".')
             return
+        config['backup'] = normalizeList(config['backup'])
+        config['work'] = normalizeList(config['work'])
         for k, w1 in enumerate(config['work']):
             for l, w2 in enumerate(config['work']):
                 if k != l and isSubpath(w1, w2):
                     printError('Bad work paths in config \"' + config['name'] + '\"')
-                    printIndent('Paths in work cannot be its subpaths.')
+                    printIndent('Paths in work cannot be its subpaths or identical.')
                     return
         for k, b1 in enumerate(config['backup']):
             for l, b2 in enumerate(config['backup']):
                 if k != l and isSubpath(b1, b2):
                     printError('Bad backup paths in config \"' + config['name'] + '\"')
-                    printIndent('Paths in backup cannot be its subpaths.')
+                    printIndent('Paths in backup cannot be its subpaths or identical.')
                     return
         for k, b1 in enumerate(config['backup']):
             for l, w2 in enumerate(config['work']):
+                print('b1: ' + b1 + 'w2: ' + w2)
                 if k != l and isSubpath(b1, w2):
                     printError('Bad backup or work paths in config \"' + config['name'] + '\"')
-                    printIndent('Paths in backup and work cannot be its subpaths.')
+                    printIndent('Paths in backup and work cannot be its subpaths or identical.')
                     return
-        config['backup'] = normalize(config['backup'])
-        config['work'] = normalize(config['work'])
     return configs
     
 def filterConfig(config, path):
@@ -191,7 +262,12 @@ def userSelectConfig(configs):
             print('[' + str(configNumber) + '] in BACKUP of ' + config['name'] + ': ')
         print('   WORK:   ' + str(config['work'])) 
         print('   BACKUP: ' + str(config['backup']))
-    return userSelect(len(configs))
+    num = userSelect(len(configs))
+    print('num: ' + str(num))
+    print('configs' + str(configs))
+    if num is None:
+        return
+    return configs[num]
 
 def filterApplicableConfigs(configs, paths):
     applicableConfigs = []
@@ -227,12 +303,13 @@ def main(argv):
     if not applicables:
         return -1
     applicable = userSelectConfig(applicables)
+    print('DEBUG SEL: ' + str(applicable))
     if not applicable:
         return -1
-    if mode.loadAndCheck(applicable):
-        mode.perform(paths, rootPath)
-    else:
+    if not mode.loadAndCheck(applicable):
         return -1
+    mode.calculateSrcsAndDsts(paths, rootPath)
+    mode.perform();
 
     print("APPLICABLE:")
     print(str(applicable))

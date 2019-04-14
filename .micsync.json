@@ -2,11 +2,12 @@
 			"configs": [ {
 				"name": "outer config",
 				"work": [
-					"./tests/d1/d1-2/",
-					"./tests/d1/d1-1/"
+					"/data/projects/micsync/tests/d1"
 				],
 				"backup": [
-					"./tests/d2/d2-1/"
+					"./tests/d2/d2-1/",
+					"./tests/d2/d2-2/",
+					"/run/media/mic/externdata/"
 				]
 			},
 			{
