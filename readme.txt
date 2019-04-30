@@ -15,7 +15,7 @@ Supported actions location (WORKING or BACKUP):
 			Options:
 			-m Copy modified without asking.
 		-work:
-			Asks which WORKING and/or BACKUP to chooseif many are accesible.
+			Asks which WORKING and/or BACKUP to choose if many are accesible.
 			Copies selected from chosen BACKUP to chosen WORKING.
 			Lists modified and asks for confirmation.
 			Lists to-delete and asks for confirmation.

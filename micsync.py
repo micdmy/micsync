@@ -1,6 +1,7 @@
 #/usr/bin/python
 
 import sys, getopt, json, os.path, subprocess
+from copy import copy
 
 def userSelect(numElem):
     while True:
@@ -19,18 +20,18 @@ def userYes(msg):
             elif userInput in "Nn":
                 return False
 
-def userSelectWork(work):
-    if not work:
+def userSelectLocation(location, locationName):
+    if not location:
         return
-    if len(work) == 1:
-        return work[0]
-    print('Choose WORK location (Q to cancel and exit):')
-    for i, w in enumerate(work):
+    if len(location) == 1:
+        return location[0]
+    print('Choose ' + locationName + ' location (Q to cancel and exit):')
+    for i, w in enumerate(location):
         print('[' + str(i) + '] ' + w)
-    num = userSelect(len(work))
+    num = userSelect(len(location))
     if not num:
         return
-    return work[num] 
+    return location[num] 
 
 def getAccesiblePaths(paths):
     return [p for p in paths if os.path.exists(p)]
@@ -81,6 +82,18 @@ class Mode:
     def __init__(self, name, options):
         self.name = name
         self.options = options
+    def loadAndCheck(self, applicable):
+        self.applicable = applicable
+        self.applicable['backup'] = getAccesiblePaths(self.applicable['backup'])
+        self.applicable['work'] = getAccesiblePaths(self.applicable['work'])
+        if self.applicable['fBackup']:
+            self.applicable['pathsOrigin'] = getAccesiblePaths(self.applicable['fBackup'])[0]
+        else:
+            self.applicable['pathsOrigin'] = getAccesiblePaths(self.applicable['fWork'])[0]
+        if self.applicable['backup'] and self.applicable['work'] and self.applicable['pathsOrigin']:
+            return True
+        else: 
+            return False
 
 class BackupMode(Mode):
     def __init__(self, name, options):
@@ -88,13 +101,12 @@ class BackupMode(Mode):
         self.dsts = []
         self.srcs = []
     def loadAndCheck(self, applicable):
-        self.applicable = applicable
+        if not super().loadAndCheck(applicable):
+            return
         if self.applicable['fBackup']:
-            self.applicable['sWork'] = userSelectWork(self.applicable('work'))
-            self.applicable['pathsOrigin'] = self.applicable['fBackup'][0]
+            self.applicable['sWork'] = userSelectLocation(self.applicable('work'), 'WORK')
         else:
             self.applicable['sWork'] = self.applicable['fWork'][0]
-            self.applicable['pathsOrigin'] = self.applicable['fWork'][0]
         if not self.applicable['sWork']:
             return
         return True
@@ -104,14 +116,16 @@ class BackupMode(Mode):
         print('relPaths' + str(relPaths))
         self.srcs = prependRoot(self.applicable['sWork'], relPaths)
         self.srcs = normalizeList(self.srcs)
-        print('root: ' + rootPath)
+        print('root: ' + rootPath)  
+        print('self.srcs: ' + str(self.srcs))
         if(self.srcs[0] == self.applicable['sWork']):
+            print('KROPKA')
             relRootPath = '.'
             self.srcs[0] = appendSlash(self.srcs[0])
         else:
             relRootPath = makeRelative(self.applicable['pathsOrigin'], [rootPath])
-        print('relRootPath' + str(relRootPath))
-        for  backup in getAccesiblePaths(self.applicable['backup']):
+        print('relRootPath: ' + str(relRootPath))
+        for  backup in self.applicable['backup']:
             dst = prependRoot(backup, relRootPath)[0]
             dst =  appendSlash(normalize(dst))
             self.dsts.append(dst)
@@ -122,6 +136,40 @@ class BackupMode(Mode):
             if(Rsync.shallModifyExisting(self.srcs, dst)):
                 Rsync.backup(self.srcs, dst)
 
+class WorkMode:
+    def __init__(self, name, options):
+        super().__init__(name, options)
+        self.dsts = []
+        self.srcs = []
+    def loadAndCheck(self, applicable):
+        if not super().loadAndCheck(applicable):
+            return
+        if self.applicable['fBackup']:
+            self.applicable['sWork'] = userSelectLocation(self.applicable('work'), 'WORK')
+            self.applicable['sBackup'] = self.applicable['fBackup'][0]
+        else:
+            self.applicable['sWork'] = self.applicable['fWork'][0]
+            self.applicable['sBackup'] = userSelectLocation(self.applicable['backup'], 'BACKUP')
+        if self.applicable['sWork'] and self.applicable['sBackup']:
+            return True
+        return
+    def calculateSrcsAndDsts(self, paths, rootPath):
+        relPaths = makeRelative(self.applicable['pathsOrigin'], paths)
+        self.srcs = prependRoot(self.applicable['sBackup'], relPaths)
+        self.srcs = normalizeList(self.srcs)
+        if(self.srcs[0] == self.applicable['sBackup']):
+            relRootPath = '.'
+            self.srcs[0] = appendSlash(self.srcs[0])
+        else:
+            relRootPath = makeRelative(self.applicable['pathsOrigin'], [rootPath])
+        dst = prependRoot(self.applicable['sWork'], relRootPath)[0]
+        dst =  appendSlash(normalize(dst))
+        self.dsts[0] = dst
+    def perform(self):
+        print('SRCS: ' + str(self.srcs))
+        print('DSTS: ' + str(self.dsts))
+        if(Rsync.shallModifyExisting(self.srcs, dst)):
+                Rsync.backup(self.srcs, dst)
     
 modes = [BackupMode('backup', 'm'),
          Mode('work', 'mdD'),
@@ -155,12 +203,12 @@ def printValidSyntaxInfo(programName):
 def parseInputArguments(arguments):
     retMode = None
     for mode in modes:
-        print("lOOP")
+        #print("lOOP")
         try:
             opts, args = getopt.getopt(arguments[1:], mode.options, [mode.name])
             opts = [opt[0] for opt in opts]
-            print("OPTS: " + str(opts))
-            print("ARGS: " + str(args))
+            #print("OPTS: " + str(opts))
+            #print("ARGS: " + str(args))
             if ("--" + mode.name) in opts: 
                 print("I--" + mode.name)
                 retMode = mode
@@ -168,7 +216,7 @@ def parseInputArguments(arguments):
                                                          and x[0] == '-'
                                                          and  x[1] in mode.options)]
                 paths = normalizeList(args)
-                print('PPAATTHHSS: ' + str(paths))
+                #print('PPAATTHHSS: ' + str(paths))
                 if not paths:
                     printValidSyntaxInfo(arguments[0])
                     return None, None, None
@@ -188,7 +236,7 @@ def parseInputArguments(arguments):
                 print("E--" + mode.name)
         except getopt.GetoptError:
             pass
-    print("getopt.Ge")
+    #print("getopt.Ge")
     printValidSyntaxInfo(arguments[0])
     return None, None, None
 
@@ -237,7 +285,7 @@ def verifyConfigurations(configs, configFileName):
                     return
         for k, b1 in enumerate(config['backup']):
             for l, w2 in enumerate(config['work']):
-                print('b1: ' + b1 + 'w2: ' + w2)
+                #print('b1: ' + b1 + 'w2: ' + w2)
                 if k != l and isSubpath(b1, w2):
                     printError('Bad backup or work paths in config \"' + config['name'] + '\"')
                     printIndent('Paths in backup and work cannot be its subpaths or identical.')
@@ -245,8 +293,13 @@ def verifyConfigurations(configs, configFileName):
     return configs
     
 def filterConfig(config, path):
+    config['fWork'] = []
+    config['fBackup'] = []
+    #print('config_IN: ' +str(config))
     config['fWork'] = [wPath for wPath in config['work'] if isSubpath(wPath, path)]
     config['fBackup'] = [bPath for bPath in config['backup'] if isSubpath(bPath, path)]
+    #print('P: '+path+'W: '+str(config['fWork'])+'B: '+str(config['fBackup']))
+    #print('config_OUT: ' +str(config))
     return config
 
 def userSelectConfig(configs):
@@ -260,11 +313,11 @@ def userSelectConfig(configs):
             print('[' + str(configNumber) + '] in WORK of ' + config['name'] + ': ')
         if config['fBackup']:
             print('[' + str(configNumber) + '] in BACKUP of ' + config['name'] + ': ')
-        print('   WORK:   ' + str(config['work'])) 
-        print('   BACKUP: ' + str(config['backup']))
+        #print('   WORK:   ' + str(config['work'])) 
+        #print('   BACKUP: ' + str(config['backup']))
     num = userSelect(len(configs))
-    print('num: ' + str(num))
-    print('configs' + str(configs))
+    #print('num: ' + str(num))
+    #print('configs' + str(configs))
     if num is None:
         return
     return configs[num]
@@ -272,10 +325,15 @@ def userSelectConfig(configs):
 def filterApplicableConfigs(configs, paths):
     applicableConfigs = []
     for config in configs:
-        pathsConfig = [filterConfig(config, path) for path in paths]
+        pathsConfig = [filterConfig(copy(config), path) for path in paths]
+        #print('config.NAME: ' +config['name'])
+        #print('pathsConfig: ' +str(pathsConfig))
+        if [True for pConfig in pathsConfig if (not pConfig['fBackup'] and not pConfig['fWork'])]:
+            #At least one path not in BACKUP and not in WORK
+            continue
         if not configsEqual(pathsConfig):
             printError('In config: ' + config['name'] + ':')
-            printIndent('All given paths should be the same WORK xor BACKUP')
+            printIndent('All given paths should be in the same WORK xor BACKUP')
             return
         elif pathsConfig:
             pC = pathsConfig[0]
