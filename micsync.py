@@ -29,8 +29,10 @@ def userSelectLocation(location, locationName):
     for i, w in enumerate(location):
         print('[' + str(i) + '] ' + w)
     num = userSelect(len(location))
-    if not num:
+    if num is None:
+        print("NIC")
         return
+    print("SELECTED: " + str(location[num]))
     return location[num] 
 
 def getAccesiblePaths(paths):
@@ -53,6 +55,14 @@ def appendSlash(path):
         return path + '/'
     return path
 
+def isDir(path):
+    return os.path.isdir(path)
+
+def cutLastEndline(string):
+    if(string and string[-1] == '\n'):
+        string = string[:-1]
+    return string
+
 def printError(msg):
     print('micsync.py: Error: ' + str(msg)) 
 
@@ -63,25 +73,81 @@ def printIndent(msg):
     print('    ' + str(msg))
 
 class Rsync:
+    DELETE = ["--delete"]
+    NO_MODIFY = ["--ignore-existing"]
     def _pathsForRsync(srcsLst, dst):
-        return "".join((" " + s) for s in srcsLst) + " " + dst
-    
-    def shallModifyExisting(srcsLst, dst):
-        printInfo("THIS FILES WILL BE MODIFIED in \"" + dst + "\":") 
-        command = "rsync -navhP --existing" + Rsync._pathsForRsync(srcsLst, dst)
-        subprocess.run(command, shell=True)
-        return userYes("MODIFY FILES LISTED ABOVE?")
+        return srcsLst + [dst]
 
-    def backup(srcsLst, dst):
-        printInfo("BACKUP to \"" + dst + "\":") 
-        command = "rsync -avhP" + Rsync._pathsForRsync(srcsLst, dst)
-        subprocess.run(command, shell=True)
+    def removeTouchedDirsFromOutput(outpLines, dst):
+        wholePaths = prependRoot(dst, outpLines)
+        return  [oL for i, oL in enumerate(outpLines)  if not isDir(wholePaths[i])]
+    
+    def shallModifyExisting(srcsLst, dst, suspendPrintDirs):
+        command = ["rsync", "-n", "-a", "-h", "-P", "--existing"] +  Rsync._pathsForRsync(srcsLst, dst)
+        output = subprocess.run(args=command, stdout=subprocess.PIPE, text=True).stdout
+        modifiedFiles = output.split("\n",)
+        if(modifiedFiles and modifiedFiles[0] == "sending incremental file list"):
+            modifiedFiles = modifiedFiles[1:]
+            modifiedFiles = cutLastEndline(modifiedFiles)
+
+            if(modifiedFiles):
+                printInfo("(NOSUS) THIS FILES WILL BE MODIFIED in \"" + dst + "\":") 
+                for mF in modifiedFiles:
+                    printIndent(mF)
+
+            if suspendPrintDirs:
+                modifiedFiles = Rsync.removeTouchedDirsFromOutput(modifiedFiles, dst)
+            if(modifiedFiles):
+                printInfo("THIS FILES WILL BE MODIFIED in \"" + dst + "\":") 
+                for mF in modifiedFiles:
+                    printIndent(mF)
+                return userYes("MODIFY FILES LISTED ABOVE (OTHER WILL BE COPIED ANYWAY)?")
+        else: 
+            printError("Something went wrong with rsync call. Maybe it's api has changed? Please inform the author.")
+            return
+
+    def shallDeleteInDst(srcsLst, dst, suspendPrintDirs):
+        command = ["rsync", "-n", "-a", "-h", "-P", "--delete", "--ignore-existing", "--existing"] +  Rsync._pathsForRsync(srcsLst, dst)
+        output = subprocess.run(args=command, stdout=subprocess.PIPE, text=True).stdout
+        modifiedFiles = output.split("\n",)
+        if(modifiedFiles and modifiedFiles[0] == "sending incremental file list"):
+            modifiedFiles = modifiedFiles[1:]
+            modifiedFiles = cutLastEndline(modifiedFiles)
+
+            if(modifiedFiles):
+                printInfo("(NO SUS) THIS FILES WILL BE DELETED in \"" + dst + "\":") 
+                for mF in modifiedFiles:
+                    printIndent(mF)
+
+            if suspendPrintDirs:
+                modifiedFiles = Rsync.removeTouchedDirsFromOutput(modifiedFiles, dst)
+            if(modifiedFiles):
+                printInfo("THIS FILES WILL BE DELETED in \"" + dst + "\":") 
+                for mF in modifiedFiles:
+                    printIndent(mF)
+                return userYes("DELETE FILES LISTED ABOVE (OTHER WILL BE COPIED ANYWAY)?")
+        else: 
+            printError("Something went wrong with rsync call. Maybe it's api has changed? Please inform the author.")
+            return
+
+    def sync(srcsLst, dst, options):
+        printInfo("PERFORMING SYNC to \"" + dst + "\":") 
+        command = ["rsync", "-a", "-v", "-h", "-P"] + options +  Rsync._pathsForRsync(srcsLst, dst)
+        print("THIS IS COMMAND:" + str(command))
+        output = subprocess.run(args=command, stdout=subprocess.PIPE, text=True).stdout
+        print(output)
 
         
 class Mode:
     def __init__(self, name, options):
         self.name = name
         self.options = options
+    def updateFlags(self)
+        self.flags.suspendPrintDirs = 's' in self.options
+        self.flags.askForModified = 'm' in self.options
+        self.flags.allowDeleting = 'd' in self.options
+        self.flags.dontAskForDeleted = 'D' in self.options
+        
     def loadAndCheck(self, applicable):
         self.applicable = applicable
         self.applicable['backup'] = getAccesiblePaths(self.applicable['backup'])
@@ -94,6 +160,19 @@ class Mode:
             return True
         else: 
             return False
+    def calculateSrcsAndDsts(self, paths, rootPath):
+        relPaths = makeRelative(self.applicable['pathsOrigin'], paths)
+        self.srcs = prependRoot(self.applicable['srcLocation'], relPaths)
+        self.srcs = normalizeList(self.srcs)
+        if(self.srcs[0] == self.applicable['srcLocation']):
+            relRootPath = '.'
+            self.srcs[0] = appendSlash(self.srcs[0])
+        else:
+            relRootPath = makeRelative(self.applicable['pathsOrigin'], [rootPath])
+        for  dstLoc in self.applicable['dstLocations']:
+            dst = prependRoot(dstLoc, relRootPath)[0]
+            dst =  appendSlash(normalize(dst))
+            self.dsts.append(dst)
 
 class BackupMode(Mode):
     def __init__(self, name, options):
@@ -104,39 +183,24 @@ class BackupMode(Mode):
         if not super().loadAndCheck(applicable):
             return
         if self.applicable['fBackup']:
-            self.applicable['sWork'] = userSelectLocation(self.applicable('work'), 'WORK')
+            self.applicable['srcLocation'] = userSelectLocation(self.applicable('work'), 'WORK')
         else:
-            self.applicable['sWork'] = self.applicable['fWork'][0]
-        if not self.applicable['sWork']:
+            self.applicable['srcLocation'] = self.applicable['fWork'][0]
+        if not self.applicable['srcLocation']:
             return
+        self.applicable['dstLocations'] = self.applicable['backup']
         return True
-    def calculateSrcsAndDsts(self, paths, rootPath):
-        print('origin: ' + self.applicable['pathsOrigin'])
-        relPaths = makeRelative(self.applicable['pathsOrigin'], paths)
-        print('relPaths' + str(relPaths))
-        self.srcs = prependRoot(self.applicable['sWork'], relPaths)
-        self.srcs = normalizeList(self.srcs)
-        print('root: ' + rootPath)  
-        print('self.srcs: ' + str(self.srcs))
-        if(self.srcs[0] == self.applicable['sWork']):
-            print('KROPKA')
-            relRootPath = '.'
-            self.srcs[0] = appendSlash(self.srcs[0])
-        else:
-            relRootPath = makeRelative(self.applicable['pathsOrigin'], [rootPath])
-        print('relRootPath: ' + str(relRootPath))
-        for  backup in self.applicable['backup']:
-            dst = prependRoot(backup, relRootPath)[0]
-            dst =  appendSlash(normalize(dst))
-            self.dsts.append(dst)
     def perform(self):
         print('SRCS: ' + str(self.srcs))
         print('DSTS: ' + str(self.dsts))
         for dst in self.dsts:
-            if(Rsync.shallModifyExisting(self.srcs, dst)):
-                Rsync.backup(self.srcs, dst)
+            if(self.askForModified and not Rsync.shallModifyExisting(self.srcs, dst, self.suspendPrintDirs)):
+                print("NOMOD")
+                Rsync.sync(self.srcs, dst, Rsync.NO_MODIFY)
+            else:
+                Rsync.sync(self.srcs, dst, [])
 
-class WorkMode:
+class WorkMode(Mode):
     def __init__(self, name, options):
         super().__init__(name, options)
         self.dsts = []
@@ -145,34 +209,34 @@ class WorkMode:
         if not super().loadAndCheck(applicable):
             return
         if self.applicable['fBackup']:
-            self.applicable['sWork'] = userSelectLocation(self.applicable('work'), 'WORK')
-            self.applicable['sBackup'] = self.applicable['fBackup'][0]
+            self.applicable['dstLocations'] = [userSelectLocation(self.applicable('work'), 'WORK')]
+            print("WYBRANE: " + str(self.applicable['dstLocations']))
+            self.applicable['srcLocation'] = self.applicable['fBackup'][0]
         else:
-            self.applicable['sWork'] = self.applicable['fWork'][0]
-            self.applicable['sBackup'] = userSelectLocation(self.applicable['backup'], 'BACKUP')
-        if self.applicable['sWork'] and self.applicable['sBackup']:
+            self.applicable['dstLocations'] = [self.applicable['fWork'][0]]
+            self.applicable['srcLocation'] = userSelectLocation(self.applicable['backup'], 'BACKUP')
+        if self.applicable['dstLocations'][0] and self.applicable['srcLocation']:
             return True
         return
-    def calculateSrcsAndDsts(self, paths, rootPath):
-        relPaths = makeRelative(self.applicable['pathsOrigin'], paths)
-        self.srcs = prependRoot(self.applicable['sBackup'], relPaths)
-        self.srcs = normalizeList(self.srcs)
-        if(self.srcs[0] == self.applicable['sBackup']):
-            relRootPath = '.'
-            self.srcs[0] = appendSlash(self.srcs[0])
-        else:
-            relRootPath = makeRelative(self.applicable['pathsOrigin'], [rootPath])
-        dst = prependRoot(self.applicable['sWork'], relRootPath)[0]
-        dst =  appendSlash(normalize(dst))
-        self.dsts[0] = dst
     def perform(self):
         print('SRCS: ' + str(self.srcs))
         print('DSTS: ' + str(self.dsts))
-        if(Rsync.shallModifyExisting(self.srcs, dst)):
-                Rsync.backup(self.srcs, dst)
+        for dst in self.dsts:
+            noModify = self.askForModified and not Rsync.shallModifyExisting(self.srcs, dst, self.suspendPrintDirs)
+            delete = self.dontAskForDeleted or (self.allowDeleting and Rsync.shallDeleteInDst(self.srcs, dst, self.suspendPrintDirs))
+            if(noModify):
+                if(delete):
+                    Rsync.sync(self.srcs, dst, Rsync.NO_MODIFY + Rsync.DELETE)
+                else:
+                    Rsync.sync(self.srcs, dst, Rsync.NO_MODIFY)
+            else:
+                if(delete):
+                    Rsync.sync(self.srcs, dst, Rsync.DELETE)
+                else:
+                    Rsync.sync(self.srcs, dst, [])
     
-modes = [BackupMode('backup', 'm'),
-         Mode('work', 'mdD'),
+modes = [BackupMode('backup', 'ms'),
+         WorkMode('work', 'mdDs'),
          Mode('transfer', 'mdD'),
          Mode('tree', 'm')]
 
@@ -230,7 +294,7 @@ def parseInputArguments(arguments):
                         printError('Given paths must be in the same location')
                         return None, None, None
                 
-                print("MODE: " + str(retMode))
+                print("MODE:" + str(vars(mode)))
                 return retMode, paths, rootPath
             else:
                 print("E--" + mode.name)
@@ -352,6 +416,7 @@ def main(argv):
     mode, paths, rootPath = parseInputArguments(argv)
     if not mode or not paths or not rootPath:
         return -1
+    #print("MODE:" + str(vars(mode)))
     configFileName = './.micsync.json'
     configs = readConfigurations(configFileName)
     configs = verifyConfigurations(configs, configFileName)
@@ -361,7 +426,7 @@ def main(argv):
     if not applicables:
         return -1
     applicable = userSelectConfig(applicables)
-    print('DEBUG SEL: ' + str(applicable))
+    #print('DEBUG SEL: ' + str(applicable))
     if not applicable:
         return -1
     if not mode.loadAndCheck(applicable):
@@ -369,12 +434,12 @@ def main(argv):
     mode.calculateSrcsAndDsts(paths, rootPath)
     mode.perform();
 
-    print("APPLICABLE:")
-    print(str(applicable))
-    print("MODE:" + str(vars(mode)))
-    print("PATHS:" + str(paths))
-    print("READING JSON:")
-    print(readConfigurations('./.micsync.json'))
+    #print("APPLICABLE:")
+    #print(str(applicable))
+    #print("MODE:" + str(vars(mode)))
+    #print("PATHS:" + str(paths))
+    #print("READING JSON:")
+    #print(readConfigurations('./.micsync.json'))
 
     
 
