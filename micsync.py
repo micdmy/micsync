@@ -26,8 +26,8 @@ def userSelectLocation(location, locationName):
     if len(location) == 1:
         return location[0]
     printInNewline('Choose ' + locationName + ' location (Q to cancel and exit):')
-    for i, w in enumerate(location):
-        printInfo('[' + str(i) + '] ' + w)
+    for i, loc in enumerate(location):
+        printInfo('[' + str(i) + '] ' + loc)
     num = userSelect(len(location))
     if num is None:
         return
@@ -227,10 +227,45 @@ class WorkMode(Mode):
                     Rsync.sync(self.srcs, dst, Rsync.DELETE)
                 else:
                     Rsync.sync(self.srcs, dst, [])
+
+class TransferMode(Mode):
+    def __init__(self, name, options):
+        super().__init__(name, options)
+        self.dsts = []
+        self.srcs = []
+    def loadAndCheck(self, applicable):
+        if not super().loadAndCheck(applicable):
+            return
+        if len(self.applicable['backup']) < 2:
+            printInfo("Bad usage. There must be at least two BACKUP locations defined for this configuration!")
+            return
+        self.applicable['srcLocation'] = userSelectLocation(self.applicable['backup'], 'SOURCE BACKUP')
+        remaining = [ bckp for bckp in self.applicable['backup'] if bckp != self.applicable['srcLocation']]
+        self.applicable['dstLocations'] = []
+        while True:
+            self.applicable['dstLocations'].append(userSelectLocation(remaining, 'DESTINATION BACKUP'))
+            remaining = [ rem for rem in remaining if rem != self.applicable['dstLocations'][-1]]
+            if len(remaining) < 1 or not userChoose("Do you want to add more DESTINATION BACKUP locations?", "Y", "N"):
+                break;        
+    def perform(self):
+        for dst in self.dsts:
+            noModify = self.flags.askForModified and not Rsync.shallModifyExisting(self.srcs, dst, self.flags.suspendPrintDirs)
+            delete = self.flags.dontAskForDeleted or (self.flags.allowDeleting and Rsync.shallDeleteInDst(self.srcs, dst, self.flags.suspendPrintDirs))
+            if(noModify):
+                if(delete):
+                    Rsync.sync(self.srcs, dst, Rsync.NO_MODIFY + Rsync.DELETE)
+                else:
+                    Rsync.sync(self.srcs, dst, Rsync.NO_MODIFY)
+            else:
+                if(delete):
+                    Rsync.sync(self.srcs, dst, Rsync.DELETE)
+                else:
+                    Rsync.sync(self.srcs, dst, [])
+
     
 modes = [BackupMode('backup', 'ms'),
          WorkMode('work', 'mdDs'),
-         Mode('transfer', 'mdD'),
+         TransferMode('transfer', 'mdD'),
          Mode('tree', 'm')]
 
 
