@@ -181,7 +181,7 @@ class BackupMode(Mode):
         if not super().loadAndCheck(applicable):
             return
         if self.applicable['fBackup']:
-            self.applicable['srcLocation'] = userSelectLocation(self.applicable('work'), 'WORK')
+            self.applicable['srcLocation'] = userSelectLocation(self.applicable['work'], 'WORK')
         else:
             self.applicable['srcLocation'] = self.applicable['fWork'][0]
         if not self.applicable['srcLocation']:
