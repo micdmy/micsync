@@ -11,13 +11,13 @@ def userSelect(numElem):
         elif userInput.isalpha() and userInput in 'Qq':
             return 
 
-def userYes(msg):
+def userChoose(msg, trueResponse, falseResponse):
     while True:
-        userInput = input(msg + " [Y/N]")
-        if userInput.isalpha():
-            if userInput in "Yy":
+        userInput = input(msg + " [" + trueResponse + "/" + falseResponse + "]")
+        if userInput:
+            if userInput.upper() == trueResponse.upper():
                 return True
-            elif userInput in "Nn":
+            elif userInput.upper() == falseResponse.upper():
                 return False
 
 def userSelectLocation(location, locationName):
@@ -25,14 +25,13 @@ def userSelectLocation(location, locationName):
         return
     if len(location) == 1:
         return location[0]
-    print('Choose ' + locationName + ' location (Q to cancel and exit):')
+    printInNewline('Choose ' + locationName + ' location (Q to cancel and exit):')
     for i, w in enumerate(location):
-        print('[' + str(i) + '] ' + w)
+        printInfo('[' + str(i) + '] ' + w)
     num = userSelect(len(location))
     if num is None:
-        print("NIC")
         return
-    print("SELECTED: " + str(location[num]))
+    printInfo("SELECTED: " + str(location[num]))
     return location[num] 
 
 def getAccesiblePaths(paths):
@@ -67,7 +66,10 @@ def printError(msg):
     print('micsync.py: Error: ' + str(msg)) 
 
 def printInfo(msg):
-    print('micsync.py: ' + str(msg))
+    print(str(msg))
+
+def printInNewline(msg):
+    print('\n' + str(msg))
 
 def printIndent(msg):
     print('    ' + str(msg))
@@ -89,19 +91,13 @@ class Rsync:
         if(modifiedFiles and modifiedFiles[0] == "sending incremental file list"):
             modifiedFiles = modifiedFiles[1:]
             modifiedFiles = cutLastEndline(modifiedFiles)
-
-            if(modifiedFiles):
-                printInfo("(NOSUS) THIS FILES WILL BE MODIFIED in \"" + dst + "\":") 
-                for mF in modifiedFiles:
-                    printIndent(mF)
-
             if suspendPrintDirs:
                 modifiedFiles = Rsync.removeTouchedDirsFromOutput(modifiedFiles, dst)
             if(modifiedFiles):
-                printInfo("THIS FILES WILL BE MODIFIED in \"" + dst + "\":") 
+                printInNewline("THIS FILES WILL BE MODIFIED in \"" + dst + "\":") 
                 for mF in modifiedFiles:
                     printIndent(mF)
-                return userYes("MODIFY FILES LISTED ABOVE (OTHER WILL BE COPIED ANYWAY)?")
+                return userChoose("MODIFY FILES LISTED ABOVE (OTHER WILL BE COPIED ANYWAY)?", "Modify", "No")
         else: 
             printError("Something went wrong with rsync call. Maybe it's api has changed? Please inform the author.")
             return
@@ -113,36 +109,38 @@ class Rsync:
         if(modifiedFiles and modifiedFiles[0] == "sending incremental file list"):
             modifiedFiles = modifiedFiles[1:]
             modifiedFiles = cutLastEndline(modifiedFiles)
-
-            if(modifiedFiles):
-                printInfo("(NO SUS) THIS FILES WILL BE DELETED in \"" + dst + "\":") 
-                for mF in modifiedFiles:
-                    printIndent(mF)
-
             if suspendPrintDirs:
                 modifiedFiles = Rsync.removeTouchedDirsFromOutput(modifiedFiles, dst)
             if(modifiedFiles):
-                printInfo("THIS FILES WILL BE DELETED in \"" + dst + "\":") 
+                printInNewline("THIS FILES WILL BE DELETED in \"" + dst + "\":") 
                 for mF in modifiedFiles:
                     printIndent(mF)
-                return userYes("DELETE FILES LISTED ABOVE (OTHER WILL BE COPIED ANYWAY)?")
+                return userChoose("DELETE FILES LISTED ABOVE (OTHER WILL BE COPIED ANYWAY)?", "Delete", "No")
         else: 
             printError("Something went wrong with rsync call. Maybe it's api has changed? Please inform the author.")
             return
 
     def sync(srcsLst, dst, options):
-        printInfo("PERFORMING SYNC to \"" + dst + "\":") 
+        printInNewline("COPYING to \"" + dst + "\":") 
         command = ["rsync", "-a", "-v", "-h", "-P"] + options +  Rsync._pathsForRsync(srcsLst, dst)
-        print("THIS IS COMMAND:" + str(command))
         output = subprocess.run(args=command, stdout=subprocess.PIPE, text=True).stdout
-        print(output)
+        output = output.split("\n",)
+        for outp in output:
+            printIndent(outp)
 
+class Flags: 
+    def __init__(self):
+        self.suspendPrintDirs = False
+        self.askForModified = False
+        self.allowDeleting = False
+        self.dontAskForDeleted = False
         
 class Mode:
     def __init__(self, name, options):
         self.name = name
         self.options = options
-    def updateFlags(self)
+        self.flags = Flags() 
+    def updateFlags(self):
         self.flags.suspendPrintDirs = 's' in self.options
         self.flags.askForModified = 'm' in self.options
         self.flags.allowDeleting = 'd' in self.options
@@ -191,11 +189,8 @@ class BackupMode(Mode):
         self.applicable['dstLocations'] = self.applicable['backup']
         return True
     def perform(self):
-        print('SRCS: ' + str(self.srcs))
-        print('DSTS: ' + str(self.dsts))
         for dst in self.dsts:
-            if(self.askForModified and not Rsync.shallModifyExisting(self.srcs, dst, self.suspendPrintDirs)):
-                print("NOMOD")
+            if(self.flags.askForModified and not Rsync.shallModifyExisting(self.srcs, dst, self.flags.suspendPrintDirs)):
                 Rsync.sync(self.srcs, dst, Rsync.NO_MODIFY)
             else:
                 Rsync.sync(self.srcs, dst, [])
@@ -210,7 +205,7 @@ class WorkMode(Mode):
             return
         if self.applicable['fBackup']:
             self.applicable['dstLocations'] = [userSelectLocation(self.applicable('work'), 'WORK')]
-            print("WYBRANE: " + str(self.applicable['dstLocations']))
+            #print("WYBRANE: " + str(self.applicable['dstLocations']))
             self.applicable['srcLocation'] = self.applicable['fBackup'][0]
         else:
             self.applicable['dstLocations'] = [self.applicable['fWork'][0]]
@@ -219,11 +214,9 @@ class WorkMode(Mode):
             return True
         return
     def perform(self):
-        print('SRCS: ' + str(self.srcs))
-        print('DSTS: ' + str(self.dsts))
         for dst in self.dsts:
-            noModify = self.askForModified and not Rsync.shallModifyExisting(self.srcs, dst, self.suspendPrintDirs)
-            delete = self.dontAskForDeleted or (self.allowDeleting and Rsync.shallDeleteInDst(self.srcs, dst, self.suspendPrintDirs))
+            noModify = self.flags.askForModified and not Rsync.shallModifyExisting(self.srcs, dst, self.flags.suspendPrintDirs)
+            delete = self.flags.dontAskForDeleted or (self.flags.allowDeleting and Rsync.shallDeleteInDst(self.srcs, dst, self.flags.suspendPrintDirs))
             if(noModify):
                 if(delete):
                     Rsync.sync(self.srcs, dst, Rsync.NO_MODIFY + Rsync.DELETE)
@@ -274,11 +267,12 @@ def parseInputArguments(arguments):
             #print("OPTS: " + str(opts))
             #print("ARGS: " + str(args))
             if ("--" + mode.name) in opts: 
-                print("I--" + mode.name)
+                #print("I--" + mode.name)
                 retMode = mode
                 retMode.options = [x[1] for x in opts if (len(x) == 2
                                                          and x[0] == '-'
                                                          and  x[1] in mode.options)]
+                retMode.updateFlags()
                 paths = normalizeList(args)
                 #print('PPAATTHHSS: ' + str(paths))
                 if not paths:
@@ -294,10 +288,8 @@ def parseInputArguments(arguments):
                         printError('Given paths must be in the same location')
                         return None, None, None
                 
-                print("MODE:" + str(vars(mode)))
+                #print("MODE:" + str(vars(mode)))
                 return retMode, paths, rootPath
-            else:
-                print("E--" + mode.name)
         except getopt.GetoptError:
             pass
     #print("getopt.Ge")
