@@ -37,6 +37,9 @@ def userSelectLocation(location, locationName):
 def getAccesiblePaths(paths):
     return [p for p in paths if os.path.exists(p)]
 
+def isAccesiblePath(path):
+    return os.path.exists(path)
+
 def prependRoot(root, paths):
     return [os.path.join(root, p) for p in paths] 
 
@@ -75,77 +78,112 @@ def printIndent(msg):
     print('    ' + str(msg))
 
 class Rsync:
+    NO_OPTIONS = []
     DELETE = ["--delete"]
     NO_MODIFY = ["--ignore-existing"]
+
     def _pathsForRsync(srcsLst, dst):
         return srcsLst + [dst]
 
-    def removeTouchedDirsFromOutput(outpLines, dst):
+    def _removeTouchedDirsFromOutput(outpLines, dst):
         wholePaths = prependRoot(dst, outpLines)
         return  [oL for i, oL in enumerate(outpLines)  if not isDir(wholePaths[i])]
-    
-    def shallModifyExisting(srcsLst, dst, suspendPrintDirs):
-        command = ["rsync", "-n", "-a", "-h", "-P", "--existing"] +  Rsync._pathsForRsync(srcsLst, dst)
+
+    def _removeCreatedDirsFromOutput(outpLines, dst):
+        pattern = "created directory "
+        for i, oL in enumerate(outpLines):
+            if oL.startswith(pattern):
+                del outpLines[i]
+        return outpLines
+            
+    def _run(options, suspendPrintDirs, dst):
+        command = ["rsync"] + options
         output = subprocess.run(args=command, stdout=subprocess.PIPE, text=True).stdout
-        modifiedFiles = output.split("\n",)
-        if(modifiedFiles and modifiedFiles[0] == "sending incremental file list"):
-            modifiedFiles = modifiedFiles[1:]
-            modifiedFiles = cutLastEndline(modifiedFiles)
+        outpLines = output.split("\n",)
+        if(outpLines and outpLines[0] == "sending incremental file list"):
+            outpLines = outpLines[1:]
+            if outpLines and outpLines[-1] == "":
+                del outpLines[-1]
             if suspendPrintDirs:
-                modifiedFiles = Rsync.removeTouchedDirsFromOutput(modifiedFiles, dst)
-            if(modifiedFiles):
-                printInNewline("THIS FILES WILL BE MODIFIED in \"" + dst + "\":") 
-                for mF in modifiedFiles:
-                    printIndent(mF)
-                return userChoose("MODIFY FILES LISTED ABOVE (OTHER WILL BE COPIED ANYWAY)?", "Modify", "No")
+                outpLines = Rsync._removeCreatedDirsFromOutput(outpLines, dst)
+                outpLines = Rsync._removeTouchedDirsFromOutput(outpLines, dst)
         else: 
             printError("Something went wrong with rsync call. Maybe it's api has changed? Please inform the author.")
             return
+        return outpLines
+        
+    def shallModifyExisting(srcsLst, dst, suspendPrintDirs):
+        outpLines = Rsync._run(["-n", "-a", "-h", "-P", "--existing"] +  Rsync._pathsForRsync(srcsLst, dst), suspendPrintDirs, dst)
+        if(outpLines):
+            printInNewline("THIS FILES WILL BE MODIFIED in \"" + dst + "\":") 
+            for oL in outpLines:
+                printIndent(oL)
+            return userChoose("MODIFY FILES LISTED ABOVE (OTHER WILL BE COPIED ANYWAY)?", "Modify", "No")
+        else:
+            printInNewline("NO FILES TO MODIFY in \"" + dst + "\":") 
 
     def shallDeleteInDst(srcsLst, dst, suspendPrintDirs):
-        command = ["rsync", "-n", "-a", "-h", "-P", "--delete", "--ignore-existing", "--existing"] +  Rsync._pathsForRsync(srcsLst, dst)
-        output = subprocess.run(args=command, stdout=subprocess.PIPE, text=True).stdout
-        modifiedFiles = output.split("\n",)
-        if(modifiedFiles and modifiedFiles[0] == "sending incremental file list"):
-            modifiedFiles = modifiedFiles[1:]
-            modifiedFiles = cutLastEndline(modifiedFiles)
-            if suspendPrintDirs:
-                modifiedFiles = Rsync.removeTouchedDirsFromOutput(modifiedFiles, dst)
-            if(modifiedFiles):
-                printInNewline("THIS FILES WILL BE DELETED in \"" + dst + "\":") 
-                for mF in modifiedFiles:
-                    printIndent(mF)
-                return userChoose("DELETE FILES LISTED ABOVE (OTHER WILL BE COPIED ANYWAY)?", "Delete", "No")
-        else: 
-            printError("Something went wrong with rsync call. Maybe it's api has changed? Please inform the author.")
-            return
+        outpLines = Rsync._run(["-n", "-a", "-h", "-P", "--delete", "--ignore-existing", "--existing"] +  Rsync._pathsForRsync(srcsLst, dst), suspendPrintDirs, dst)
+        if(outpLines):
+            printInNewline("THIS FILES WILL BE DELETED in \"" + dst + "\":") 
+            for oL in outpLines:
+                printIndent(oL)
+            return userChoose("DELETE FILES LISTED ABOVE (OTHER WILL BE COPIED ANYWAY)?", "Delete", "No")
 
-    def sync(srcsLst, dst, options):
+    def sync(srcsLst, dst, options, verbose):
         printInNewline("COPYING to \"" + dst + "\":") 
         command = ["rsync", "-a", "-v", "-h", "-P"] + options +  Rsync._pathsForRsync(srcsLst, dst)
-        output = subprocess.run(args=command, stdout=subprocess.PIPE, text=True).stdout
-        output = output.split("\n",)
+        if verbose:
+            if not userChoose("DO YOU WANT TO EXECUTE COMMAND:\n" + str(command) + "\n","yes","no"):
+                return
+        result = subprocess.run(args=command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        output = result.stdout.split("\n",)
+        printNoSrc = False
+        printHintTreeMode = False
         for outp in output:
             printIndent(outp)
+            if "failed: No such file or directory" in outp:
+                if "rsync: link_stat" in outp or "rsync: change_dir" in outp:
+                    printNoSrc = True
+                if "rsync: mkdir" in outp:
+                    printHintTreeMode = True
+        if printNoSrc:
+            printInfo("NO SOURCE DIRECTORY, rsync COMMAND FAILED!")
+        if printHintTreeMode:
+            printInfo("NO DESTINATION DIRECTORY, rsync COMMAND FAILED!")
+            printIndent("TRY TO RUN WITH --tree OPTION FIRST!")
+        
 
 class Flags: 
-    def __init__(self):
-        self.suspendPrintDirs = False
-        self.askForModified = False
-        self.allowDeleting = False
-        self.dontAskForDeleted = False
+    def __init__(self, optionsString):
+        self.suspendPrintDirs = 's' in optionsString
+        self.askForModified = not 'm' in optionsString
+        self.allowDeleting = 'd' in optionsString
+        self.dontAskForDeleted = 'D' in optionsString
+        self.verbose = 'v' in optionsString
+    def getRsyncOptions(self, dst, srcs):
+        print("DUPA" + str(self.askForModified))
+        if(self.askForModified):
+            optNoModify = Rsync.NO_OPTIONS if Rsync.shallModifyExisting(srcs, dst, self.suspendPrintDirs) else Rsync.NO_MODIFY
+        else:
+            optNoModify = Rsync.NO_OPTIONS
+        if(self.dontAskForDeleted):
+            optDelete = Rsync.DELETE
+        else:
+            if(self.allowDeleting):
+                optDelete = Rsync.DELETE if Rsync.shallDeleteInDst(srcs, dst, self.suspendPrintDirs) else Rsync.NO_OPTIONS
+            else:
+                optDelete = Rsync.NO_OPTIONS
+        return optNoModify + optDelete
         
 class Mode:
     def __init__(self, name, options):
         self.name = name
         self.options = options
-        self.flags = Flags() 
+        self.flags = Flags("") 
     def updateFlags(self):
-        self.flags.suspendPrintDirs = 's' in self.options
-        self.flags.askForModified = 'm' in self.options
-        self.flags.allowDeleting = 'd' in self.options
-        self.flags.dontAskForDeleted = 'D' in self.options
-        
+        #print("OPTIONS:" + str(self.options))
+        self.flags = Flags(self.options)
     def loadAndCheck(self, applicable):
         self.applicable = applicable
         self.applicable['backup'] = getAccesiblePaths(self.applicable['backup'])
@@ -167,10 +205,13 @@ class Mode:
             self.srcs[0] = appendSlash(self.srcs[0])
         else:
             relRootPath = makeRelative(self.applicable['pathsOrigin'], [rootPath])
-        for  dstLoc in self.applicable['dstLocations']:
+        for dstLoc in self.applicable['dstLocations']:
             dst = prependRoot(dstLoc, relRootPath)[0]
             dst =  appendSlash(normalize(dst))
             self.dsts.append(dst)
+    def perform(self):
+        for dst in self.dsts:
+            Rsync.sync(self.srcs, dst, self.flags.getRsyncOptions(dst, self.srcs), self.flags.verbose)
 
 class BackupMode(Mode):
     def __init__(self, name, options):
@@ -188,12 +229,6 @@ class BackupMode(Mode):
             return
         self.applicable['dstLocations'] = self.applicable['backup']
         return True
-    def perform(self):
-        for dst in self.dsts:
-            if(self.flags.askForModified and not Rsync.shallModifyExisting(self.srcs, dst, self.flags.suspendPrintDirs)):
-                Rsync.sync(self.srcs, dst, Rsync.NO_MODIFY)
-            else:
-                Rsync.sync(self.srcs, dst, [])
 
 class WorkMode(Mode):
     def __init__(self, name, options):
@@ -213,20 +248,6 @@ class WorkMode(Mode):
         if self.applicable['dstLocations'][0] and self.applicable['srcLocation']:
             return True
         return
-    def perform(self):
-        for dst in self.dsts:
-            noModify = self.flags.askForModified and not Rsync.shallModifyExisting(self.srcs, dst, self.flags.suspendPrintDirs)
-            delete = self.flags.dontAskForDeleted or (self.flags.allowDeleting and Rsync.shallDeleteInDst(self.srcs, dst, self.flags.suspendPrintDirs))
-            if(noModify):
-                if(delete):
-                    Rsync.sync(self.srcs, dst, Rsync.NO_MODIFY + Rsync.DELETE)
-                else:
-                    Rsync.sync(self.srcs, dst, Rsync.NO_MODIFY)
-            else:
-                if(delete):
-                    Rsync.sync(self.srcs, dst, Rsync.DELETE)
-                else:
-                    Rsync.sync(self.srcs, dst, [])
 
 class TransferMode(Mode):
     def __init__(self, name, options):
@@ -247,25 +268,11 @@ class TransferMode(Mode):
             remaining = [ rem for rem in remaining if rem != self.applicable['dstLocations'][-1]]
             if len(remaining) < 1 or not userChoose("Do you want to add more DESTINATION BACKUP locations?", "Y", "N"):
                 break;        
-    def perform(self):
-        for dst in self.dsts:
-            noModify = self.flags.askForModified and not Rsync.shallModifyExisting(self.srcs, dst, self.flags.suspendPrintDirs)
-            delete = self.flags.dontAskForDeleted or (self.flags.allowDeleting and Rsync.shallDeleteInDst(self.srcs, dst, self.flags.suspendPrintDirs))
-            if(noModify):
-                if(delete):
-                    Rsync.sync(self.srcs, dst, Rsync.NO_MODIFY + Rsync.DELETE)
-                else:
-                    Rsync.sync(self.srcs, dst, Rsync.NO_MODIFY)
-            else:
-                if(delete):
-                    Rsync.sync(self.srcs, dst, Rsync.DELETE)
-                else:
-                    Rsync.sync(self.srcs, dst, [])
-
+        return True
     
-modes = [BackupMode('backup', 'ms'),
-         WorkMode('work', 'mdDs'),
-         TransferMode('transfer', 'mdD'),
+modes = [BackupMode('backup', 'msv'),
+         WorkMode('work', 'mdDsv'),
+         TransferMode('transfer', 'mdDsv'),
          Mode('tree', 'm')]
 
 
