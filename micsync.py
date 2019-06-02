@@ -6,14 +6,14 @@ from copy import copy
 def userSelect(numElem):
     while True:
         userInput = input('[0-' + str(numElem -1) + ']')
-        if userInput.isnumeric() and int(userInput) in (0, numElem - 1):
+        if userInput.isnumeric() and int(userInput) in list(range(0, numElem)):
             return int(userInput)
         elif userInput.isalpha() and userInput in 'Qq':
             return 
 
 def userChoose(msg, trueResponse, falseResponse):
     while True:
-        userInput = input(msg + " [" + trueResponse + "/" + falseResponse + "]")
+        userInput = input(msg + "[" + trueResponse + "/" + falseResponse + "]")
         if userInput:
             if userInput.upper() == trueResponse.upper():
                 return True
@@ -118,9 +118,9 @@ class Rsync:
             printInNewline("THIS FILES WILL BE MODIFIED in \"" + dst + "\":") 
             for oL in outpLines:
                 printIndent(oL)
-            return userChoose("MODIFY FILES LISTED ABOVE (OTHER WILL BE COPIED ANYWAY)?", "Modify", "No")
+            return userChoose("MODIFY FILES LISTED ABOVE (OTHER WILL BE COPIED ANYWAY)? ", "Modify", "No")
         else:
-            printInNewline("NO FILES TO MODIFY in \"" + dst + "\":") 
+            printInNewline("NO FILES TO MODIFY in \"" + dst + "\"") 
 
     def shallDeleteInDst(srcsLst, dst, suspendPrintDirs):
         outpLines = Rsync._run(["-n", "-a", "-h", "-P", "--delete", "--ignore-existing", "--existing"] +  Rsync._pathsForRsync(srcsLst, dst), suspendPrintDirs, dst)
@@ -128,10 +128,15 @@ class Rsync:
             printInNewline("THIS FILES WILL BE DELETED in \"" + dst + "\":") 
             for oL in outpLines:
                 printIndent(oL)
-            return userChoose("DELETE FILES LISTED ABOVE (OTHER WILL BE COPIED ANYWAY)?", "Delete", "No")
+            return userChoose("DELETE FILES LISTED ABOVE (OTHER WILL BE COPIED ANYWAY)? ", "Delete", "No")
 
     def sync(srcsLst, dst, options, verbose):
-        printInNewline("COPYING to \"" + dst + "\":") 
+        if(verbose):
+            printInNewline("COPYING:")
+            for s in srcsLst:
+               printIndent(s) 
+            printInfo("TO:")
+            printIndent(dst)
         command = ["rsync", "-a", "-v", "-h", "-P"] + options +  Rsync._pathsForRsync(srcsLst, dst)
         if verbose:
             if not userChoose("DO YOU WANT TO EXECUTE COMMAND:\n" + str(command) + "\n","yes","no"):
@@ -162,7 +167,6 @@ class Flags:
         self.dontAskForDeleted = 'D' in optionsString
         self.verbose = 'v' in optionsString
     def getRsyncOptions(self, dst, srcs):
-        print("DUPA" + str(self.askForModified))
         if(self.askForModified):
             optNoModify = Rsync.NO_OPTIONS if Rsync.shallModifyExisting(srcs, dst, self.suspendPrintDirs) else Rsync.NO_MODIFY
         else:
@@ -182,7 +186,6 @@ class Mode:
         self.options = options
         self.flags = Flags("") 
     def updateFlags(self):
-        #print("OPTIONS:" + str(self.options))
         self.flags = Flags(self.options)
     def loadAndCheck(self, applicable):
         self.applicable = applicable
@@ -239,7 +242,7 @@ class WorkMode(Mode):
         if not super().loadAndCheck(applicable):
             return
         if self.applicable['fBackup']:
-            self.applicable['dstLocations'] = [userSelectLocation(self.applicable('work'), 'WORK')]
+            self.applicable['dstLocations'] = [userSelectLocation(self.applicable['work'], 'WORK')]
             #print("WYBRANE: " + str(self.applicable['dstLocations']))
             self.applicable['srcLocation'] = self.applicable['fBackup'][0]
         else:
@@ -263,11 +266,20 @@ class TransferMode(Mode):
         self.applicable['srcLocation'] = userSelectLocation(self.applicable['backup'], 'SOURCE BACKUP')
         remaining = [ bckp for bckp in self.applicable['backup'] if bckp != self.applicable['srcLocation']]
         self.applicable['dstLocations'] = []
+        onlyOneRemainingInitially = len(remaining) == 1
         while True:
             self.applicable['dstLocations'].append(userSelectLocation(remaining, 'DESTINATION BACKUP'))
             remaining = [ rem for rem in remaining if rem != self.applicable['dstLocations'][-1]]
-            if len(remaining) < 1 or not userChoose("Do you want to add more DESTINATION BACKUP locations?", "Y", "N"):
-                break;        
+            if len(remaining) < 1:
+                break 
+            else:
+                if len(remaining) == 1 and not onlyOneRemainingInitially:
+                    if userChoose("Do you want to add this DESTINATION BACKUP location too?\n" + remaining[0] + "\n", "Y", "N"):
+
+                        self.applicable['dstLocations'].append(remaining[0])
+                    break
+                elif not userChoose("Do you want to add more DESTINATION BACKUP locations? ", "Y", "N"):
+                    break
         return True
     
 modes = [BackupMode('backup', 'msv'),
