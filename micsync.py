@@ -52,9 +52,18 @@ def normalizeList(paths):
 def normalize(path):
     return os.path.realpath(os.path.abspath(path))
 
+def getParentDir(path):
+    return os.path.dirname(path)
+
 def appendSlash(path):
     if path.strip()[-1] != '/':
         return path + '/'
+    return path
+
+def removeSlash(path):
+    woutWhite = path.strip()
+    if path and woutWhite[-1] == '/' and len(woutWhite) != "/":
+        return path[:-1]
     return path
 
 def isDir(path):
@@ -212,6 +221,17 @@ class Mode:
             dst = prependRoot(dstLoc, relRootPath)[0]
             dst =  appendSlash(normalize(dst))
             self.dsts.append(dst)
+        for dL in self.dsts:
+            parent = getParentDir(removeSlash(dL))
+            print("path: " + str(dL))
+            print("dir: " + str(parent))
+            if not not isAccesiblePath(parent):
+                printInfo("COPYING TO \"" + str(dL) + "\" NOT POSSIBLE")
+                printIndent("directory \"" + str(parent) + "\" doesn't exist or is unaccessible!")
+                printIndent("TRY TO RUN WITH --tree OPTION FIRST!")
+                return
+        return True
+
     def perform(self):
         for dst in self.dsts:
             Rsync.sync(self.srcs, dst, self.flags.getRsyncOptions(dst, self.srcs), self.flags.verbose)
@@ -336,9 +356,9 @@ def parseInputArguments(arguments):
                     if not os.path.exists(path):
                         printError('Invalid path: ' + path)
                         return None, None, None
-                rootPath = os.path.split(paths[0])[0]
+                rootPath = getParentDir(paths[0])
                 for path in paths:
-                    if rootPath != os.path.split(path)[0]:
+                    if rootPath != getParentDir(path):
                         printError('Given paths must be in the same location')
                         return None, None, None
                 
@@ -477,7 +497,8 @@ def main(argv):
         return -1
     if not mode.loadAndCheck(applicable):
         return -1
-    mode.calculateSrcsAndDsts(paths, rootPath)
+    if not mode.calculateSrcsAndDsts(paths, rootPath):
+        return -1 
     mode.perform();
 
     #print("APPLICABLE:")
