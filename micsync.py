@@ -99,13 +99,9 @@ class Rsync:
         return  [oL for i, oL in enumerate(outpLines)  if not isDir(wholePaths[i])]
 
     def _removeCreatedDirsFromOutput(outpLines, dst):
-        pattern = "created directory "
-        for i, oL in enumerate(outpLines):
-            if oL.startswith(pattern):
-                del outpLines[i]
-        return outpLines
+        return [oL for oL in outpLines if not oL.startswith("created directory ")]
             
-    def _run(options, suspendPrintDirs, dst):
+    def _run(options, suspendTouchedDirs, suspendCreatedDirs, dst):
         command = ["rsync"] + options
         output = subprocess.run(args=command, stdout=subprocess.PIPE, text=True).stdout
         outpLines = output.split("\n",)
@@ -113,8 +109,9 @@ class Rsync:
             outpLines = outpLines[1:]
             if outpLines and outpLines[-1] == "":
                 del outpLines[-1]
-            if suspendPrintDirs:
+            if suspendCreatedDirs:
                 outpLines = Rsync._removeCreatedDirsFromOutput(outpLines, dst)
+            if suspendTouchedDirs:
                 outpLines = Rsync._removeTouchedDirsFromOutput(outpLines, dst)
         else: 
             printError("Something went wrong with rsync call. Maybe it's api has changed? Please inform the author.")
@@ -122,7 +119,7 @@ class Rsync:
         return outpLines
         
     def shallModifyExisting(srcsLst, dst, suspendPrintDirs):
-        outpLines = Rsync._run(["-n", "-a", "-h", "-P", "--existing"] +  Rsync._pathsForRsync(srcsLst, dst), suspendPrintDirs, dst)
+        outpLines = Rsync._run(["-n", "-a", "-h", "-P", "--existing"] +  Rsync._pathsForRsync(srcsLst, dst), suspendPrintDirs, suspendPrintDirs, dst)
         if(outpLines):
             printInNewline("THIS FILES WILL BE MODIFIED in \"" + dst + "\":") 
             for oL in outpLines:
@@ -132,7 +129,7 @@ class Rsync:
             printInNewline("NO FILES TO MODIFY in \"" + dst + "\"") 
 
     def shallDeleteInDst(srcsLst, dst, suspendPrintDirs):
-        outpLines = Rsync._run(["-n", "-a", "-h", "-P", "--delete", "--ignore-existing", "--existing"] +  Rsync._pathsForRsync(srcsLst, dst), suspendPrintDirs, dst)
+        outpLines = Rsync._run(["-n", "-a", "-h", "-P", "--delete", "--ignore-existing", "--existing"] +  Rsync._pathsForRsync(srcsLst, dst), suspendPrintDirs, True, dst)
         if(outpLines):
             printInNewline("THIS FILES WILL BE DELETED in \"" + dst + "\":") 
             for oL in outpLines:
@@ -221,15 +218,31 @@ class Mode:
             dst = prependRoot(dstLoc, relRootPath)[0]
             dst =  appendSlash(normalize(dst))
             self.dsts.append(dst)
+        tempDsts = []
         for dL in self.dsts:
             parent = getParentDir(removeSlash(dL))
-            print("path: " + str(dL))
-            print("dir: " + str(parent))
-            if not not isAccesiblePath(parent):
+            #print("path: " + str(dL))
+            #print("dir: " + str(parent))
+            if isAccesiblePath(parent):
+                tempDsts.append(dL)
+            else:
                 printInfo("COPYING TO \"" + str(dL) + "\" NOT POSSIBLE")
                 printIndent("directory \"" + str(parent) + "\" doesn't exist or is unaccessible!")
                 printIndent("TRY TO RUN WITH --tree OPTION FIRST!")
-                return
+        self.dsts = tempDsts
+        if not self.dsts:
+            return
+        tempSrcs = []
+        for sL in self.srcs:
+            if isAccesiblePath(sL):
+                tempSrcs.append(sL)
+            else:
+                printInfo("SOURCE \"" + str(sL) + "\" doesn't exist or is unaccessible!")
+                printIndent("COPYING THIS SOURCE WILL BE ABORTED!")
+                del sL
+        self.srcs = tempSrcs
+        if not self.srcs:
+            return
         return True
 
     def perform(self):
@@ -284,11 +297,16 @@ class TransferMode(Mode):
             printInfo("Bad usage. There must be at least two BACKUP locations defined for this configuration!")
             return
         self.applicable['srcLocation'] = userSelectLocation(self.applicable['backup'], 'SOURCE BACKUP')
+        if not self.applicable['srcLocation']:
+            return
         remaining = [ bckp for bckp in self.applicable['backup'] if bckp != self.applicable['srcLocation']]
         self.applicable['dstLocations'] = []
         onlyOneRemainingInitially = len(remaining) == 1
         while True:
-            self.applicable['dstLocations'].append(userSelectLocation(remaining, 'DESTINATION BACKUP'))
+            location = userSelectLocation(remaining, 'DESTINATION BACKUP')
+            if not location:
+                return
+            self.applicable['dstLocations'].append(location)
             remaining = [ rem for rem in remaining if rem != self.applicable['dstLocations'][-1]]
             if len(remaining) < 1:
                 break 
