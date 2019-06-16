@@ -90,6 +90,7 @@ class Rsync:
     NO_OPTIONS = []
     DELETE = ["--delete"]
     NO_MODIFY = ["--ignore-existing"]
+    TREE = ["--include='*/'"] + ["--exclude='*'"]
 
     def _pathsForRsync(srcsLst, dst):
         return srcsLst + [dst]
@@ -221,8 +222,6 @@ class Mode:
         tempDsts = []
         for dL in self.dsts:
             parent = getParentDir(removeSlash(dL))
-            #print("path: " + str(dL))
-            #print("dir: " + str(parent))
             if isAccesiblePath(parent):
                 tempDsts.append(dL)
             else:
@@ -276,7 +275,6 @@ class WorkMode(Mode):
             return
         if self.applicable['fBackup']:
             self.applicable['dstLocations'] = [userSelectLocation(self.applicable['work'], 'WORK')]
-            #print("WYBRANE: " + str(self.applicable['dstLocations']))
             self.applicable['srcLocation'] = self.applicable['fBackup'][0]
         else:
             self.applicable['dstLocations'] = [self.applicable['fWork'][0]]
@@ -284,6 +282,14 @@ class WorkMode(Mode):
         if self.applicable['dstLocations'][0] and self.applicable['srcLocation']:
             return True
         return
+
+class TreeMode(WorkMode):
+    def __init__(self, name, options):
+        super().__init__(name, options)
+    def perform(self):
+        for dst in self.dsts:
+            options = self.flags.getRsyncOptions(dst, self.srcs) + Rsync.TREE
+            Rsync.sync(self.srcs, dst, , self.flags.verbose)
 
 class TransferMode(Mode):
     def __init__(self, name, options):
@@ -323,7 +329,7 @@ class TransferMode(Mode):
 modes = [BackupMode('backup', 'msv'),
          WorkMode('work', 'mdDsv'),
          TransferMode('transfer', 'mdDsv'),
-         Mode('tree', 'm')]
+         TreeMode('tree', 'v')]
 
 
 
