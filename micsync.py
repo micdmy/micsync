@@ -1,15 +1,21 @@
-#/usr/bin/python
+# /usr/bin/python
 
-import sys, getopt, json, os.path, subprocess
+import getopt
+import json
+import os.path
+import subprocess
+import sys
 from copy import copy
+
 
 def userSelect(numElem):
     while True:
-        userInput = input('[0-' + str(numElem -1) + ']')
+        userInput = input('[0-' + str(numElem - 1) + ']')
         if userInput.isnumeric() and int(userInput) in list(range(0, numElem)):
             return int(userInput)
         elif userInput.isalpha() and userInput in 'Qq':
-            return 
+            return
+
 
 def userChoose(msg, trueResponse, falseResponse):
     while True:
@@ -19,6 +25,7 @@ def userChoose(msg, trueResponse, falseResponse):
                 return True
             elif userInput.upper() == falseResponse.upper():
                 return False
+
 
 def userSelectLocation(location, locationName):
     if not location:
@@ -32,33 +39,42 @@ def userSelectLocation(location, locationName):
     if num is None:
         return
     printInfo("SELECTED: " + str(location[num]))
-    return location[num] 
+    return location[num]
+
 
 def getAccesiblePaths(paths):
     return [p for p in paths if os.path.exists(p)]
 
+
 def isAccesiblePath(path):
     return os.path.exists(path)
 
+
 def prependRoot(root, paths):
-    return [os.path.join(root, p) for p in paths] 
+    return [os.path.join(root, p) for p in paths]
+
 
 def makeRelative(root, paths):
     return [os.path.relpath(p, root) for p in paths]
 
+
 def normalizeList(paths):
     return [os.path.realpath(os.path.abspath(p)) for p in paths]
+
 
 def normalize(path):
     return os.path.realpath(os.path.abspath(path))
 
+
 def getParentDir(path):
     return os.path.dirname(path)
+
 
 def appendSlash(path):
     if path.strip()[-1] != '/':
         return path + '/'
     return path
+
 
 def removeSlash(path):
     woutWhite = path.strip()
@@ -66,25 +82,32 @@ def removeSlash(path):
         return path[:-1]
     return path
 
+
 def isDir(path):
     return os.path.isdir(path)
 
+
 def cutLastEndline(string):
-    if(string and string[-1] == '\n'):
+    if (string and string[-1] == '\n'):
         string = string[:-1]
     return string
 
+
 def printError(msg):
-    print('micsync.py: Error: ' + str(msg)) 
+    print('micsync.py: Error: ' + str(msg))
+
 
 def printInfo(msg):
     print(str(msg))
 
+
 def printInNewline(msg):
     print('\n' + str(msg))
 
+
 def printIndent(msg):
     print('    ' + str(msg))
+
 
 class Rsync:
     NO_OPTIONS = []
@@ -97,16 +120,16 @@ class Rsync:
 
     def _removeTouchedDirsFromOutput(outpLines, dst):
         wholePaths = prependRoot(dst, outpLines)
-        return  [oL for i, oL in enumerate(outpLines)  if not isDir(wholePaths[i])]
+        return [oL for i, oL in enumerate(outpLines) if not isDir(wholePaths[i])]
 
     def _removeCreatedDirsFromOutput(outpLines, dst):
         return [oL for oL in outpLines if not oL.startswith("created directory ")]
-            
+
     def _run(options, suspendTouchedDirs, suspendCreatedDirs, dst):
         command = ["rsync"] + options
         output = subprocess.run(args=command, stdout=subprocess.PIPE, text=True).stdout
-        outpLines = output.split("\n",)
-        if(outpLines and outpLines[0] == "sending incremental file list"):
+        outpLines = output.split("\n", )
+        if (outpLines and outpLines[0] == "sending incremental file list"):
             outpLines = outpLines[1:]
             if outpLines and outpLines[-1] == "":
                 del outpLines[-1]
@@ -114,42 +137,46 @@ class Rsync:
                 outpLines = Rsync._removeCreatedDirsFromOutput(outpLines, dst)
             if suspendTouchedDirs:
                 outpLines = Rsync._removeTouchedDirsFromOutput(outpLines, dst)
-        else: 
+        else:
             printError("Something went wrong with rsync call. Maybe it's api has changed? Please inform the author.")
             return
         return outpLines
-        
+
     def shallModifyExisting(srcsLst, dst, suspendPrintDirs):
-        outpLines = Rsync._run(["-n", "-a", "-h", "-P", "--existing"] +  Rsync._pathsForRsync(srcsLst, dst), suspendPrintDirs, suspendPrintDirs, dst)
-        if(outpLines):
-            printInNewline("THIS FILES WILL BE MODIFIED in \"" + dst + "\":") 
+        outpLines = Rsync._run(["-n", "-a", "-h", "-P", "--existing"] + Rsync._pathsForRsync(srcsLst, dst),
+                               suspendPrintDirs, suspendPrintDirs, dst)
+        if (outpLines):
+            printInNewline("THIS FILES WILL BE MODIFIED in \"" + dst + "\":")
             for oL in outpLines:
                 printIndent(oL)
             return userChoose("MODIFY FILES LISTED ABOVE (OTHER WILL BE COPIED ANYWAY)? ", "Modify", "No")
         else:
-            printInNewline("NO FILES TO MODIFY in \"" + dst + "\"") 
+            printInNewline("NO FILES TO MODIFY in \"" + dst + "\"")
 
     def shallDeleteInDst(srcsLst, dst, suspendPrintDirs):
-        outpLines = Rsync._run(["-n", "-a", "-h", "-P", "--delete", "--ignore-existing", "--existing"] +  Rsync._pathsForRsync(srcsLst, dst), suspendPrintDirs, True, dst)
-        if(outpLines):
-            printInNewline("THIS FILES WILL BE DELETED in \"" + dst + "\":") 
+        outpLines = Rsync._run(
+            ["-n", "-a", "-h", "-P", "--delete", "--ignore-existing", "--existing"] + Rsync._pathsForRsync(srcsLst,
+                                                                                                           dst),
+            suspendPrintDirs, True, dst)
+        if (outpLines):
+            printInNewline("THIS FILES WILL BE DELETED in \"" + dst + "\":")
             for oL in outpLines:
                 printIndent(oL)
             return userChoose("DELETE FILES LISTED ABOVE (OTHER WILL BE COPIED ANYWAY)? ", "Delete", "No")
 
     def sync(srcsLst, dst, options, verbose):
-        if(verbose):
+        if (verbose):
             printInNewline("COPYING:")
             for s in srcsLst:
-               printIndent(s) 
+                printIndent(s)
             printInfo("TO:")
             printIndent(dst)
-        command = ["rsync", "-a", "-v", "-h", "-P"] + options +  Rsync._pathsForRsync(srcsLst, dst)
+        command = ["rsync", "-a", "-v", "-h", "-P"] + options + Rsync._pathsForRsync(srcsLst, dst)
         if verbose:
-            if not userChoose("DO YOU WANT TO EXECUTE COMMAND:\n" + str(command) + "\n","yes","no"):
+            if not userChoose("DO YOU WANT TO EXECUTE COMMAND:\n" + str(command) + "\n", "yes", "no"):
                 return
         result = subprocess.run(args=command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        output = result.stdout.split("\n",)
+        output = result.stdout.split("\n", )
         printNoSrc = False
         printHintTreeMode = False
         for outp in output:
@@ -164,36 +191,42 @@ class Rsync:
         if printHintTreeMode:
             printInfo("NO DESTINATION DIRECTORY, rsync COMMAND FAILED!")
             printIndent("TRY TO RUN WITH --tree OPTION FIRST!")
-        
 
-class Flags: 
+
+class Flags:
     def __init__(self, optionsString):
         self.suspendPrintDirs = 's' in optionsString
         self.askForModified = not 'm' in optionsString
         self.allowDeleting = 'd' in optionsString
         self.dontAskForDeleted = 'D' in optionsString
         self.verbose = 'v' in optionsString
+
     def getRsyncOptions(self, dst, srcs):
-        if(self.askForModified):
-            optNoModify = Rsync.NO_OPTIONS if Rsync.shallModifyExisting(srcs, dst, self.suspendPrintDirs) else Rsync.NO_MODIFY
+        if (self.askForModified):
+            optNoModify = Rsync.NO_OPTIONS if Rsync.shallModifyExisting(srcs, dst,
+                                                                        self.suspendPrintDirs) else Rsync.NO_MODIFY
         else:
             optNoModify = Rsync.NO_OPTIONS
-        if(self.dontAskForDeleted):
+        if (self.dontAskForDeleted):
             optDelete = Rsync.DELETE
         else:
-            if(self.allowDeleting):
-                optDelete = Rsync.DELETE if Rsync.shallDeleteInDst(srcs, dst, self.suspendPrintDirs) else Rsync.NO_OPTIONS
+            if (self.allowDeleting):
+                optDelete = Rsync.DELETE if Rsync.shallDeleteInDst(srcs, dst,
+                                                                   self.suspendPrintDirs) else Rsync.NO_OPTIONS
             else:
                 optDelete = Rsync.NO_OPTIONS
         return optNoModify + optDelete
-        
+
+
 class Mode:
     def __init__(self, name, options):
         self.name = name
         self.options = options
-        self.flags = Flags("") 
+        self.flags = Flags("")
+
     def updateFlags(self):
         self.flags = Flags(self.options)
+
     def loadAndCheck(self, applicable):
         self.applicable = applicable
         self.applicable['backup'] = getAccesiblePaths(self.applicable['backup'])
@@ -204,20 +237,21 @@ class Mode:
             self.applicable['pathsOrigin'] = getAccesiblePaths(self.applicable['fWork'])[0]
         if self.applicable['backup'] and self.applicable['work'] and self.applicable['pathsOrigin']:
             return True
-        else: 
+        else:
             return False
+
     def calculateSrcsAndDsts(self, paths, rootPath):
         relPaths = makeRelative(self.applicable['pathsOrigin'], paths)
         self.srcs = prependRoot(self.applicable['srcLocation'], relPaths)
         self.srcs = normalizeList(self.srcs)
-        if(self.srcs[0] == self.applicable['srcLocation']):
+        if (self.srcs[0] == self.applicable['srcLocation']):
             relRootPath = '.'
             self.srcs[0] = appendSlash(self.srcs[0])
         else:
             relRootPath = makeRelative(self.applicable['pathsOrigin'], [rootPath])
         for dstLoc in self.applicable['dstLocations']:
             dst = prependRoot(dstLoc, relRootPath)[0]
-            dst =  appendSlash(normalize(dst))
+            dst = appendSlash(normalize(dst))
             self.dsts.append(dst)
         tempDsts = []
         for dL in self.dsts:
@@ -248,11 +282,13 @@ class Mode:
         for dst in self.dsts:
             Rsync.sync(self.srcs, dst, self.flags.getRsyncOptions(dst, self.srcs), self.flags.verbose)
 
+
 class BackupMode(Mode):
     def __init__(self, name, options):
         super().__init__(name, options)
         self.dsts = []
         self.srcs = []
+
     def loadAndCheck(self, applicable):
         if not super().loadAndCheck(applicable):
             return
@@ -265,11 +301,13 @@ class BackupMode(Mode):
         self.applicable['dstLocations'] = self.applicable['backup']
         return True
 
+
 class WorkMode(Mode):
     def __init__(self, name, options):
         super().__init__(name, options)
         self.dsts = []
         self.srcs = []
+
     def loadAndCheck(self, applicable):
         if not super().loadAndCheck(applicable):
             return
@@ -283,19 +321,23 @@ class WorkMode(Mode):
             return True
         return
 
+
 class TreeMode(WorkMode):
     def __init__(self, name, options):
         super().__init__(name, options)
+
     def perform(self):
         for dst in self.dsts:
             options = self.flags.getRsyncOptions(dst, self.srcs) + Rsync.TREE
-            Rsync.sync(self.srcs, dst, , self.flags.verbose)
+            Rsync.sync(self.srcs, dst, options, self.flags.verbose)
+
 
 class TransferMode(Mode):
     def __init__(self, name, options):
         super().__init__(name, options)
         self.dsts = []
         self.srcs = []
+
     def loadAndCheck(self, applicable):
         if not super().loadAndCheck(applicable):
             return
@@ -305,7 +347,7 @@ class TransferMode(Mode):
         self.applicable['srcLocation'] = userSelectLocation(self.applicable['backup'], 'SOURCE BACKUP')
         if not self.applicable['srcLocation']:
             return
-        remaining = [ bckp for bckp in self.applicable['backup'] if bckp != self.applicable['srcLocation']]
+        remaining = [bckp for bckp in self.applicable['backup'] if bckp != self.applicable['srcLocation']]
         self.applicable['dstLocations'] = []
         onlyOneRemainingInitially = len(remaining) == 1
         while True:
@@ -313,24 +355,24 @@ class TransferMode(Mode):
             if not location:
                 return
             self.applicable['dstLocations'].append(location)
-            remaining = [ rem for rem in remaining if rem != self.applicable['dstLocations'][-1]]
+            remaining = [rem for rem in remaining if rem != self.applicable['dstLocations'][-1]]
             if len(remaining) < 1:
-                break 
+                break
             else:
                 if len(remaining) == 1 and not onlyOneRemainingInitially:
-                    if userChoose("Do you want to add this DESTINATION BACKUP location too?\n" + remaining[0] + "\n", "Y", "N"):
-
+                    if userChoose("Do you want to add this DESTINATION BACKUP location too?\n" + remaining[0] + "\n",
+                                  "Y", "N"):
                         self.applicable['dstLocations'].append(remaining[0])
                     break
                 elif not userChoose("Do you want to add more DESTINATION BACKUP locations? ", "Y", "N"):
                     break
         return True
-    
+
+
 modes = [BackupMode('backup', 'msv'),
          WorkMode('work', 'mdDsv'),
          TransferMode('transfer', 'mdDsv'),
          TreeMode('tree', 'v')]
-
 
 
 def configsEqual(configs):
@@ -342,10 +384,12 @@ def configsEqual(configs):
             return False
     return True
 
+
 def xor(a, b):
     a = bool(a)
     b = bool(b)
     return (a and not b) or (not a and b)
+
 
 def printValidSyntaxInfo(programName):
     printError('Valid syntax is:')
@@ -355,24 +399,25 @@ def printValidSyntaxInfo(programName):
             optString += ' [-' + char + ']'
         printIndent(programName + ' --' + mode.name + optString + ' path...')
 
+
 def parseInputArguments(arguments):
     retMode = None
     for mode in modes:
-        #print("lOOP")
+        # print("lOOP")
         try:
             opts, args = getopt.getopt(arguments[1:], mode.options, [mode.name])
             opts = [opt[0] for opt in opts]
-            #print("OPTS: " + str(opts))
-            #print("ARGS: " + str(args))
-            if ("--" + mode.name) in opts: 
-                #print("I--" + mode.name)
+            # print("OPTS: " + str(opts))
+            # print("ARGS: " + str(args))
+            if ("--" + mode.name) in opts:
+                # print("I--" + mode.name)
                 retMode = mode
                 retMode.options = [x[1] for x in opts if (len(x) == 2
-                                                         and x[0] == '-'
-                                                         and  x[1] in mode.options)]
+                                                          and x[0] == '-'
+                                                          and x[1] in mode.options)]
                 retMode.updateFlags()
                 paths = normalizeList(args)
-                #print('PPAATTHHSS: ' + str(paths))
+                # print('PPAATTHHSS: ' + str(paths))
                 if not paths:
                     printValidSyntaxInfo(arguments[0])
                     return None, None, None
@@ -385,14 +430,15 @@ def parseInputArguments(arguments):
                     if rootPath != getParentDir(path):
                         printError('Given paths must be in the same location')
                         return None, None, None
-                
-                #print("MODE:" + str(vars(mode)))
+
+                # print("MODE:" + str(vars(mode)))
                 return retMode, paths, rootPath
         except getopt.GetoptError:
             pass
-    #print("getopt.Ge")
+    # print("getopt.Ge")
     printValidSyntaxInfo(arguments[0])
     return None, None, None
+
 
 def readConfigurations(configFileName):
     with open(configFileName, 'r') as configFile:
@@ -404,8 +450,10 @@ def readConfigurations(configFileName):
             return None
         return configuration['configs']
 
+
 def isSubpath(basepath, subpath):
-    return  basepath == (os.path.commonpath([basepath, subpath]))
+    return basepath == (os.path.commonpath([basepath, subpath]))
+
 
 def verifyConfigurations(configs, configFileName):
     if not configs:
@@ -439,22 +487,24 @@ def verifyConfigurations(configs, configFileName):
                     return
         for k, b1 in enumerate(config['backup']):
             for l, w2 in enumerate(config['work']):
-                #print('b1: ' + b1 + 'w2: ' + w2)
+                # print('b1: ' + b1 + 'w2: ' + w2)
                 if k != l and isSubpath(b1, w2):
                     printError('Bad backup or work paths in config \"' + config['name'] + '\"')
                     printIndent('Paths in backup and work cannot be its subpaths or identical.')
                     return
     return configs
-    
+
+
 def filterConfig(config, path):
     config['fWork'] = []
     config['fBackup'] = []
-    #print('config_IN: ' +str(config))
+    # print('config_IN: ' +str(config))
     config['fWork'] = [wPath for wPath in config['work'] if isSubpath(wPath, path)]
     config['fBackup'] = [bPath for bPath in config['backup'] if isSubpath(bPath, path)]
-    #print('P: '+path+'W: '+str(config['fWork'])+'B: '+str(config['fBackup']))
-    #print('config_OUT: ' +str(config))
+    # print('P: '+path+'W: '+str(config['fWork'])+'B: '+str(config['fBackup']))
+    # print('config_OUT: ' +str(config))
     return config
+
 
 def userSelectConfig(configs):
     if not configs:
@@ -467,23 +517,24 @@ def userSelectConfig(configs):
             print('[' + str(configNumber) + '] in WORK of ' + config['name'] + ': ')
         if config['fBackup']:
             print('[' + str(configNumber) + '] in BACKUP of ' + config['name'] + ': ')
-        #print('   WORK:   ' + str(config['work'])) 
-        #print('   BACKUP: ' + str(config['backup']))
+        # print('   WORK:   ' + str(config['work']))
+        # print('   BACKUP: ' + str(config['backup']))
     num = userSelect(len(configs))
-    #print('num: ' + str(num))
-    #print('configs' + str(configs))
+    # print('num: ' + str(num))
+    # print('configs' + str(configs))
     if num is None:
         return
     return configs[num]
+
 
 def filterApplicableConfigs(configs, paths):
     applicableConfigs = []
     for config in configs:
         pathsConfig = [filterConfig(copy(config), path) for path in paths]
-        #print('config.NAME: ' +config['name'])
-        #print('pathsConfig: ' +str(pathsConfig))
+        # print('config.NAME: ' +config['name'])
+        # print('pathsConfig: ' +str(pathsConfig))
         if [True for pConfig in pathsConfig if (not pConfig['fBackup'] and not pConfig['fWork'])]:
-            #At least one path not in BACKUP and not in WORK
+            # At least one path not in BACKUP and not in WORK
             continue
         if not configsEqual(pathsConfig):
             printError('In config: ' + config['name'] + ':')
@@ -506,7 +557,7 @@ def main(argv):
     mode, paths, rootPath = parseInputArguments(argv)
     if not mode or not paths or not rootPath:
         return -1
-    #print("MODE:" + str(vars(mode)))
+    # print("MODE:" + str(vars(mode)))
     configFileName = './.micsync.json'
     configs = readConfigurations(configFileName)
     configs = verifyConfigurations(configs, configFileName)
@@ -516,23 +567,22 @@ def main(argv):
     if not applicables:
         return -1
     applicable = userSelectConfig(applicables)
-    #print('DEBUG SEL: ' + str(applicable))
+    # print('DEBUG SEL: ' + str(applicable))
     if not applicable:
         return -1
     if not mode.loadAndCheck(applicable):
         return -1
     if not mode.calculateSrcsAndDsts(paths, rootPath):
-        return -1 
+        return -1
     mode.perform();
 
-    #print("APPLICABLE:")
-    #print(str(applicable))
-    #print("MODE:" + str(vars(mode)))
-    #print("PATHS:" + str(paths))
-    #print("READING JSON:")
-    #print(readConfigurations('./.micsync.json'))
+    # print("APPLICABLE:")
+    # print(str(applicable))
+    # print("MODE:" + str(vars(mode)))
+    # print("PATHS:" + str(paths))
+    # print("READING JSON:")
+    # print(readConfigurations('./.micsync.json'))
 
-    
 
 if __name__ == "__main__":
     main(sys.argv)
