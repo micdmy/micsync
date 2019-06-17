@@ -89,7 +89,7 @@ def isDir(path):
 
 
 def cutLastEndline(string):
-    if(string and string[-1] == '\n'):
+    if string and string[-1] == '\n':
         string = string[:-1]
     return string
 
@@ -116,27 +116,31 @@ class Rsync:
     NO_MODIFY = ["--ignore-existing"]
     TREE = ["--include='*/'"] + ["--exclude='*'"]
 
-    def _pathsForRsync(srcsLst, dst):
+    @classmethod
+    def _pathsForRsync(cls, srcsLst, dst):
         return srcsLst + [dst]
 
-    def _removeTouchedDirsFromOutput(outpLines, dst):
+    @classmethod
+    def _removeTouchedDirsFromOutput(cls, outpLines, dst):
         wholePaths = prependRoot(dst, outpLines)
         return [oL for i, oL in enumerate(outpLines) if not isDir(wholePaths[i])]
 
-    def _removeCreatedDirsFromOutput(outpLines, dst):
+    @classmethod
+    def _removeCreatedDirsFromOutput(cls, outpLines):
         return [oL for oL in outpLines if not oL.startswith("created directory ")]
 
-    def _run(options, suspendTouchedDirs, suspendCreatedDirs, dst):
+    @classmethod
+    def _run(cls, options, suspendTouchedDirs, suspendCreatedDirs, dst):
         command = ["rsync"] + options
         output = subprocess.run(
             args=command, stdout=subprocess.PIPE, text=True).stdout
         outpLines = output.split("\n",)
-        if(outpLines and outpLines[0] == "sending incremental file list"):
+        if outpLines and outpLines[0] == "sending incremental file list":
             outpLines = outpLines[1:]
             if outpLines and outpLines[-1] == "":
                 del outpLines[-1]
             if suspendCreatedDirs:
-                outpLines = Rsync._removeCreatedDirsFromOutput(outpLines, dst)
+                outpLines = Rsync._removeCreatedDirsFromOutput(outpLines)
             if suspendTouchedDirs:
                 outpLines = Rsync._removeTouchedDirsFromOutput(outpLines, dst)
         else:
@@ -145,10 +149,11 @@ class Rsync:
             return
         return outpLines
 
-    def shallModifyExisting(srcsLst, dst, suspendPrintDirs):
+    @classmethod
+    def shallModifyExisting(cls, srcsLst, dst, suspendPrintDirs):
         outpLines = Rsync._run(["-n", "-a", "-h", "-P", "--existing"] + Rsync._pathsForRsync(
             srcsLst, dst), suspendPrintDirs, suspendPrintDirs, dst)
-        if(outpLines):
+        if outpLines:
             printInNewline("THIS FILES WILL BE MODIFIED in \"" + dst + "\":")
             for oL in outpLines:
                 printIndent(oL)
@@ -156,17 +161,19 @@ class Rsync:
         else:
             printInNewline("NO FILES TO MODIFY in \"" + dst + "\"")
 
-    def shallDeleteInDst(srcsLst, dst, suspendPrintDirs):
+    @classmethod
+    def shallDeleteInDst(cls, srcsLst, dst, suspendPrintDirs):
         outpLines = Rsync._run(["-n", "-a", "-h", "-P", "--delete", "--ignore-existing",
                                 "--existing"] + Rsync._pathsForRsync(srcsLst, dst), suspendPrintDirs, True, dst)
-        if(outpLines):
+        if outpLines:
             printInNewline("THIS FILES WILL BE DELETED in \"" + dst + "\":")
             for oL in outpLines:
                 printIndent(oL)
             return userChoose("DELETE FILES LISTED ABOVE (OTHER WILL BE COPIED ANYWAY)? ", "Delete", "No")
 
-    def sync(srcsLst, dst, options, verbose):
-        if(verbose):
+    @classmethod
+    def sync(cls, srcsLst, dst, options, verbose):
+        if verbose:
             printInNewline("COPYING:")
             for s in srcsLst:
                 printIndent(s)
@@ -199,21 +206,21 @@ class Rsync:
 class Flags:
     def __init__(self, optionsString):
         self.suspendPrintDirs = 's' in optionsString
-        self.askForModified = not 'm' in optionsString
+        self.askForModified = 'm' not in optionsString
         self.allowDeleting = 'd' in optionsString
         self.dontAskForDeleted = 'D' in optionsString
         self.verbose = 'v' in optionsString
 
     def getRsyncOptions(self, dst, srcs):
-        if(self.askForModified):
+        if self.askForModified:
             optNoModify = Rsync.NO_OPTIONS if Rsync.shallModifyExisting(
                 srcs, dst, self.suspendPrintDirs) else Rsync.NO_MODIFY
         else:
             optNoModify = Rsync.NO_OPTIONS
-        if(self.dontAskForDeleted):
+        if self.dontAskForDeleted:
             optDelete = Rsync.DELETE
         else:
-            if(self.allowDeleting):
+            if self.allowDeleting:
                 optDelete = Rsync.DELETE if Rsync.shallDeleteInDst(
                     srcs, dst, self.suspendPrintDirs) else Rsync.NO_OPTIONS
             else:
@@ -226,6 +233,9 @@ class Mode:
         self.name = name
         self.options = options
         self.flags = Flags("")
+        self.applicable = []
+        self.dsts = []
+        self.srcs = []
 
     def updateFlags(self):
         self.flags = Flags(self.options)
@@ -250,7 +260,7 @@ class Mode:
         relPaths = makeRelative(self.applicable['pathsOrigin'], paths)
         self.srcs = prependRoot(self.applicable['srcLocation'], relPaths)
         self.srcs = normalizeList(self.srcs)
-        if(self.srcs[0] == self.applicable['srcLocation']):
+        if self.srcs[0] == self.applicable['srcLocation']:
             relRootPath = '.'
             self.srcs[0] = appendSlash(self.srcs[0])
         else:
@@ -296,8 +306,6 @@ class Mode:
 class BackupMode(Mode):
     def __init__(self, name, options):
         super().__init__(name, options)
-        self.dsts = []
-        self.srcs = []
 
     def loadAndCheck(self, applicable):
         if not super().loadAndCheck(applicable):
@@ -316,8 +324,6 @@ class BackupMode(Mode):
 class WorkMode(Mode):
     def __init__(self, name, options):
         super().__init__(name, options)
-        self.dsts = []
-        self.srcs = []
 
     def loadAndCheck(self, applicable):
         if not super().loadAndCheck(applicable):
@@ -348,8 +354,6 @@ class TreeMode(WorkMode):
 class TransferMode(Mode):
     def __init__(self, name, options):
         super().__init__(name, options)
-        self.dsts = []
-        self.srcs = []
 
     def loadAndCheck(self, applicable):
         if not super().loadAndCheck(applicable):
@@ -418,24 +422,18 @@ def printValidSyntaxInfo(programName):
 
 
 def parseInputArguments(arguments):
-    retMode = None
     for mode in modes:
-        # print("lOOP")
         try:
             opts, args = getopt.getopt(
                 arguments[1:], mode.options, [mode.name])
             opts = [opt[0] for opt in opts]
-            #print("OPTS: " + str(opts))
-            #print("ARGS: " + str(args))
             if ("--" + mode.name) in opts:
-                #print("I--" + mode.name)
                 retMode = mode
                 retMode.options = [x[1] for x in opts if (len(x) == 2
                                                           and x[0] == '-'
                                                           and x[1] in mode.options)]
                 retMode.updateFlags()
                 paths = normalizeList(args)
-                #print('PPAATTHHSS: ' + str(paths))
                 if not paths:
                     printValidSyntaxInfo(arguments[0])
                     return None, None, None
@@ -448,12 +446,9 @@ def parseInputArguments(arguments):
                     if rootPath != getParentDir(path):
                         printError('Given paths must be in the same location')
                         return None, None, None
-
-                #print("MODE:" + str(vars(mode)))
                 return retMode, paths, rootPath
         except getopt.GetoptError:
             pass
-    # print("getopt.Ge")
     printValidSyntaxInfo(arguments[0])
     return None, None, None
 
@@ -478,15 +473,15 @@ def verifyConfigurations(configs, configFileName):
     if not configs:
         return
     for i, config in enumerate(configs):
-        if not 'name' in config:
+        if 'name' not in config:
             printError("Deficient JSON config file: " + configFileName + ":")
             printIndent('config nr ' + str(i) + ' has no field \"name\".')
             return
-        elif not 'work' in config:
+        elif 'work' not in config:
             printError("Deficient JSON config file: " + configFileName + ":")
             printIndent('config \"' + str(i) + '\" has no field \"work\".')
             return
-        elif not 'backup' in config:
+        elif 'backup' not in config:
             printError("Deficient JSON config file: " + configFileName + ":")
             printIndent('config \"' + str(i) + '\" has no field \"backup\".')
             return
@@ -510,7 +505,6 @@ def verifyConfigurations(configs, configFileName):
                     return
         for k, b1 in enumerate(config['backup']):
             for l, w2 in enumerate(config['work']):
-                #print('b1: ' + b1 + 'w2: ' + w2)
                 if k != l and isSubpath(b1, w2):
                     printError(
                         'Bad backup or work paths in config \"' + config['name'] + '\"')
@@ -523,13 +517,10 @@ def verifyConfigurations(configs, configFileName):
 def filterConfig(config, path):
     config['fWork'] = []
     config['fBackup'] = []
-    #print('config_IN: ' +str(config))
     config['fWork'] = [wPath for wPath in config['work']
                        if isSubpath(wPath, path)]
     config['fBackup'] = [
         bPath for bPath in config['backup'] if isSubpath(bPath, path)]
-    #print('P: '+path+'W: '+str(config['fWork'])+'B: '+str(config['fBackup']))
-    #print('config_OUT: ' +str(config))
     return config
 
 
@@ -546,11 +537,7 @@ def userSelectConfig(configs):
         if config['fBackup']:
             print('[' + str(configNumber) + '] in BACKUP of ' +
                   config['name'] + ': ')
-        #print('   WORK:   ' + str(config['work']))
-        #print('   BACKUP: ' + str(config['backup']))
     num = userSelect(len(configs))
-    #print('num: ' + str(num))
-    #print('configs' + str(configs))
     if num is None:
         return
     return configs[num]
@@ -560,8 +547,6 @@ def filterApplicableConfigs(configs, paths):
     applicableConfigs = []
     for config in configs:
         pathsConfig = [filterConfig(copy(config), path) for path in paths]
-        #print('config.NAME: ' +config['name'])
-        #print('pathsConfig: ' +str(pathsConfig))
         if [True for pConfig in pathsConfig if (not pConfig['fBackup'] and not pConfig['fWork'])]:
             # At least one path not in BACKUP and not in WORK
             continue
@@ -587,7 +572,6 @@ def main(argv):
     mode, paths, rootPath = parseInputArguments(argv)
     if not mode or not paths or not rootPath:
         return -1
-    #print("MODE:" + str(vars(mode)))
     configFileName = './.micsync.json'
     configs = readConfigurations(configFileName)
     configs = verifyConfigurations(configs, configFileName)
@@ -597,7 +581,6 @@ def main(argv):
     if not applicables:
         return -1
     applicable = userSelectConfig(applicables)
-    #print('DEBUG SEL: ' + str(applicable))
     if not applicable:
         return -1
     if not mode.loadAndCheck(applicable):
@@ -605,13 +588,6 @@ def main(argv):
     if not mode.calculateSrcsAndDsts(paths, rootPath):
         return -1
     mode.perform()
-
-    # print("APPLICABLE:")
-    # print(str(applicable))
-    #print("MODE:" + str(vars(mode)))
-    #print("PATHS:" + str(paths))
-    #print("READING JSON:")
-    # print(readConfigurations('./.micsync.json'))
 
 
 if __name__ == "__main__":
