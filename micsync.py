@@ -32,7 +32,8 @@ def userSelectLocation(location, locationName):
         return
     if len(location) == 1:
         return location[0]
-    printInNewline('Choose ' + locationName + ' location (Q to cancel and exit):')
+    printInNewline('Choose ' + locationName +
+                   ' location (Q to cancel and exit):')
     for i, loc in enumerate(location):
         printInfo('[' + str(i) + '] ' + loc)
     num = userSelect(len(location))
@@ -127,7 +128,8 @@ class Rsync:
 
     def _run(options, suspendTouchedDirs, suspendCreatedDirs, dst):
         command = ["rsync"] + options
-        output = subprocess.run(args=command, stdout=subprocess.PIPE, text=True).stdout
+        output = subprocess.run(
+            args=command, stdout=subprocess.PIPE, text=True).stdout
         outpLines = output.split("\n", )
         if (outpLines and outpLines[0] == "sending incremental file list"):
             outpLines = outpLines[1:]
@@ -138,7 +140,8 @@ class Rsync:
             if suspendTouchedDirs:
                 outpLines = Rsync._removeTouchedDirsFromOutput(outpLines, dst)
         else:
-            printError("Something went wrong with rsync call. Maybe it's api has changed? Please inform the author.")
+            printError(
+                "Something went wrong with rsync call. Maybe it's api has changed? Please inform the author.")
             return
         return outpLines
 
@@ -171,11 +174,13 @@ class Rsync:
                 printIndent(s)
             printInfo("TO:")
             printIndent(dst)
-        command = ["rsync", "-a", "-v", "-h", "-P"] + options + Rsync._pathsForRsync(srcsLst, dst)
+        command = ["rsync", "-a", "-v", "-h", "-P"] + \
+            options + Rsync._pathsForRsync(srcsLst, dst)
         if verbose:
             if not userChoose("DO YOU WANT TO EXECUTE COMMAND:\n" + str(command) + "\n", "yes", "no"):
                 return
-        result = subprocess.run(args=command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        result = subprocess.run(
+            args=command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         output = result.stdout.split("\n", )
         printNoSrc = False
         printHintTreeMode = False
@@ -229,12 +234,15 @@ class Mode:
 
     def loadAndCheck(self, applicable):
         self.applicable = applicable
-        self.applicable['backup'] = getAccesiblePaths(self.applicable['backup'])
+        self.applicable['backup'] = getAccesiblePaths(
+            self.applicable['backup'])
         self.applicable['work'] = getAccesiblePaths(self.applicable['work'])
         if self.applicable['fBackup']:
-            self.applicable['pathsOrigin'] = getAccesiblePaths(self.applicable['fBackup'])[0]
+            self.applicable['pathsOrigin'] = getAccesiblePaths(
+                self.applicable['fBackup'])[0]
         else:
-            self.applicable['pathsOrigin'] = getAccesiblePaths(self.applicable['fWork'])[0]
+            self.applicable['pathsOrigin'] = getAccesiblePaths(
+                self.applicable['fWork'])[0]
         if self.applicable['backup'] and self.applicable['work'] and self.applicable['pathsOrigin']:
             return True
         else:
@@ -248,7 +256,8 @@ class Mode:
             relRootPath = '.'
             self.srcs[0] = appendSlash(self.srcs[0])
         else:
-            relRootPath = makeRelative(self.applicable['pathsOrigin'], [rootPath])
+            relRootPath = makeRelative(
+                self.applicable['pathsOrigin'], [rootPath])
         for dstLoc in self.applicable['dstLocations']:
             dst = prependRoot(dstLoc, relRootPath)[0]
             dst = appendSlash(normalize(dst))
@@ -260,7 +269,8 @@ class Mode:
                 tempDsts.append(dL)
             else:
                 printInfo("COPYING TO \"" + str(dL) + "\" NOT POSSIBLE")
-                printIndent("directory \"" + str(parent) + "\" doesn't exist or is unaccessible!")
+                printIndent("directory \"" + str(parent) +
+                            "\" doesn't exist or is unaccessible!")
                 printIndent("TRY TO RUN WITH --tree OPTION FIRST!")
         self.dsts = tempDsts
         if not self.dsts:
@@ -270,7 +280,8 @@ class Mode:
             if isAccesiblePath(sL):
                 tempSrcs.append(sL)
             else:
-                printInfo("SOURCE \"" + str(sL) + "\" doesn't exist or is unaccessible!")
+                printInfo("SOURCE \"" + str(sL) +
+                          "\" doesn't exist or is unaccessible!")
                 printIndent("COPYING THIS SOURCE WILL BE ABORTED!")
                 del sL
         self.srcs = tempSrcs
@@ -280,7 +291,8 @@ class Mode:
 
     def perform(self):
         for dst in self.dsts:
-            Rsync.sync(self.srcs, dst, self.flags.getRsyncOptions(dst, self.srcs), self.flags.verbose)
+            Rsync.sync(self.srcs, dst, self.flags.getRsyncOptions(
+                dst, self.srcs), self.flags.verbose)
 
 
 class BackupMode(Mode):
@@ -293,7 +305,8 @@ class BackupMode(Mode):
         if not super().loadAndCheck(applicable):
             return
         if self.applicable['fBackup']:
-            self.applicable['srcLocation'] = userSelectLocation(self.applicable['work'], 'WORK')
+            self.applicable['srcLocation'] = userSelectLocation(
+                self.applicable['work'], 'WORK')
         else:
             self.applicable['srcLocation'] = self.applicable['fWork'][0]
         if not self.applicable['srcLocation']:
@@ -312,11 +325,13 @@ class WorkMode(Mode):
         if not super().loadAndCheck(applicable):
             return
         if self.applicable['fBackup']:
-            self.applicable['dstLocations'] = [userSelectLocation(self.applicable['work'], 'WORK')]
+            self.applicable['dstLocations'] = [
+                userSelectLocation(self.applicable['work'], 'WORK')]
             self.applicable['srcLocation'] = self.applicable['fBackup'][0]
         else:
             self.applicable['dstLocations'] = [self.applicable['fWork'][0]]
-            self.applicable['srcLocation'] = userSelectLocation(self.applicable['backup'], 'BACKUP')
+            self.applicable['srcLocation'] = userSelectLocation(
+                self.applicable['backup'], 'BACKUP')
         if self.applicable['dstLocations'][0] and self.applicable['srcLocation']:
             return True
         return
@@ -342,12 +357,15 @@ class TransferMode(Mode):
         if not super().loadAndCheck(applicable):
             return
         if len(self.applicable['backup']) < 2:
-            printInfo("Bad usage. There must be at least two BACKUP locations defined for this configuration!")
+            printInfo(
+                "Bad usage. There must be at least two BACKUP locations defined for this configuration!")
             return
-        self.applicable['srcLocation'] = userSelectLocation(self.applicable['backup'], 'SOURCE BACKUP')
+        self.applicable['srcLocation'] = userSelectLocation(
+            self.applicable['backup'], 'SOURCE BACKUP')
         if not self.applicable['srcLocation']:
             return
-        remaining = [bckp for bckp in self.applicable['backup'] if bckp != self.applicable['srcLocation']]
+        remaining = [bckp for bckp in self.applicable['backup']
+                     if bckp != self.applicable['srcLocation']]
         self.applicable['dstLocations'] = []
         onlyOneRemainingInitially = len(remaining) == 1
         while True:
@@ -355,7 +373,8 @@ class TransferMode(Mode):
             if not location:
                 return
             self.applicable['dstLocations'].append(location)
-            remaining = [rem for rem in remaining if rem != self.applicable['dstLocations'][-1]]
+            remaining = [rem for rem in remaining if rem !=
+                         self.applicable['dstLocations'][-1]]
             if len(remaining) < 1:
                 break
             else:
@@ -405,7 +424,8 @@ def parseInputArguments(arguments):
     for mode in modes:
         # print("lOOP")
         try:
-            opts, args = getopt.getopt(arguments[1:], mode.options, [mode.name])
+            opts, args = getopt.getopt(
+                arguments[1:], mode.options, [mode.name])
             opts = [opt[0] for opt in opts]
             # print("OPTS: " + str(opts))
             # print("ARGS: " + str(args))
@@ -446,7 +466,8 @@ def readConfigurations(configFileName):
             configuration = json.load(configFile)
         except json.JSONDecodeError as e:
             printError("Invalid JSON config file: " + configFileName + ":")
-            printIndent("Line: " + str(e.lineno) + ", Column: " + str(e.colno) + ", Msg: " + e.msg)
+            printIndent("Line: " + str(e.lineno) + ", Column: " +
+                        str(e.colno) + ", Msg: " + e.msg)
             return None
         return configuration['configs']
 
@@ -476,21 +497,27 @@ def verifyConfigurations(configs, configFileName):
         for k, w1 in enumerate(config['work']):
             for l, w2 in enumerate(config['work']):
                 if k != l and isSubpath(w1, w2):
-                    printError('Bad work paths in config \"' + config['name'] + '\"')
-                    printIndent('Paths in work cannot be its subpaths or identical.')
+                    printError('Bad work paths in config \"' +
+                               config['name'] + '\"')
+                    printIndent(
+                        'Paths in work cannot be its subpaths or identical.')
                     return
         for k, b1 in enumerate(config['backup']):
             for l, b2 in enumerate(config['backup']):
                 if k != l and isSubpath(b1, b2):
-                    printError('Bad backup paths in config \"' + config['name'] + '\"')
-                    printIndent('Paths in backup cannot be its subpaths or identical.')
+                    printError('Bad backup paths in config \"' +
+                               config['name'] + '\"')
+                    printIndent(
+                        'Paths in backup cannot be its subpaths or identical.')
                     return
         for k, b1 in enumerate(config['backup']):
             for l, w2 in enumerate(config['work']):
                 # print('b1: ' + b1 + 'w2: ' + w2)
                 if k != l and isSubpath(b1, w2):
-                    printError('Bad backup or work paths in config \"' + config['name'] + '\"')
-                    printIndent('Paths in backup and work cannot be its subpaths or identical.')
+                    printError(
+                        'Bad backup or work paths in config \"' + config['name'] + '\"')
+                    printIndent(
+                        'Paths in backup and work cannot be its subpaths or identical.')
                     return
     return configs
 
@@ -499,8 +526,10 @@ def filterConfig(config, path):
     config['fWork'] = []
     config['fBackup'] = []
     # print('config_IN: ' +str(config))
-    config['fWork'] = [wPath for wPath in config['work'] if isSubpath(wPath, path)]
-    config['fBackup'] = [bPath for bPath in config['backup'] if isSubpath(bPath, path)]
+    config['fWork'] = [wPath for wPath in config['work']
+                       if isSubpath(wPath, path)]
+    config['fBackup'] = [
+        bPath for bPath in config['backup'] if isSubpath(bPath, path)]
     # print('P: '+path+'W: '+str(config['fWork'])+'B: '+str(config['fBackup']))
     # print('config_OUT: ' +str(config))
     return config
@@ -514,9 +543,11 @@ def userSelectConfig(configs):
     print('Many configs applicable, select one (Q to cancel and exit):')
     for configNumber, config in enumerate(configs):
         if config['fWork']:
-            print('[' + str(configNumber) + '] in WORK of ' + config['name'] + ': ')
+            print('[' + str(configNumber) + '] in WORK of ' +
+                  config['name'] + ': ')
         if config['fBackup']:
-            print('[' + str(configNumber) + '] in BACKUP of ' + config['name'] + ': ')
+            print('[' + str(configNumber) + '] in BACKUP of ' +
+                  config['name'] + ': ')
         # print('   WORK:   ' + str(config['work']))
         # print('   BACKUP: ' + str(config['backup']))
     num = userSelect(len(configs))
@@ -538,7 +569,8 @@ def filterApplicableConfigs(configs, paths):
             continue
         if not configsEqual(pathsConfig):
             printError('In config: ' + config['name'] + ':')
-            printIndent('All given paths should be in the same WORK xor BACKUP')
+            printIndent(
+                'All given paths should be in the same WORK xor BACKUP')
             return
         elif pathsConfig:
             pC = pathsConfig[0]
@@ -574,7 +606,7 @@ def main(argv):
         return -1
     if not mode.calculateSrcsAndDsts(paths, rootPath):
         return -1
-    mode.perform();
+    mode.perform()
 
     # print("APPLICABLE:")
     # print(str(applicable))
