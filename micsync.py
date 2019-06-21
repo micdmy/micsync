@@ -114,7 +114,7 @@ class Rsync:
     NO_OPTIONS = []
     DELETE = ["--delete"]
     NO_MODIFY = ["--ignore-existing"]
-    TREE = ["--include='*/'"] + ["--exclude='*'"]
+    TREE = ["--include=*/"] + ["--exclude=*"] # sequence is important here
 
     @classmethod
     def _pathsForRsync(cls, srcsLst, dst):
@@ -411,7 +411,7 @@ class TransferMode(Mode):
 modes = [BackupMode("backup", "msv"),
          WorkMode("work", "mdDsv"),
          TransferMode("transfer", "mdDsv"),
-         TreeMode("tree", "v")]
+         TreeMode("tree", "vs")]
 
 
 def configsEqual(configs):
