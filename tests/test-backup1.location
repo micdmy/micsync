@@ -1,9 +1,0 @@
-#!/bin/bash
-
-WORKING=(
-	./d1/
-)
-
-BACKUP=(
-	./d2/
-)
