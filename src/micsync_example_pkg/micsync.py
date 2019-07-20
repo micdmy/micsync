@@ -1,6 +1,7 @@
 # /usr/bin/python
 
 from paths import Paths, Path
+from user import User
 
 import sys
 import getopt
@@ -9,61 +10,11 @@ import subprocess
 from copy import copy
 
 
-def userSelect(numElem):
-    while True:
-        userInput = input("[0-" + str(numElem - 1) + "]")
-        if userInput.isnumeric() and int(userInput) in list(range(0, numElem)):
-            return int(userInput)
-        elif userInput.isalpha() and userInput in "Qq":
-            return
-
-
-def userChoose(msg, trueResponse, falseResponse):
-    while True:
-        userInput = input(msg + "[" + trueResponse + "/" + falseResponse + "]")
-        if userInput:
-            if userInput.upper() == trueResponse.upper():
-                return True
-            elif userInput.upper() == falseResponse.upper():
-                return False
-
-
-def userSelectLocation(location, locationName):
-    if not location:
-        return
-    if len(location) == 1:
-        return location[0]
-    printInNewline("Choose " + locationName +
-                   " location (Q to cancel and exit):")
-    for i, loc in enumerate(location):
-        printInfo("[" + str(i) + "] " + loc)
-    num = userSelect(len(location))
-    if num is None:
-        return
-    printInfo("SELECTED: " + str(location[num]))
-    return location[num]
-
 
 def cutLastEndline(string):
     if string and string[-1] == '\n':
         string = string[:-1]
     return string
-
-
-def printError(msg):
-    print("micsync.py: Error: " + str(msg))
-
-
-def printInfo(msg):
-    print(str(msg))
-
-
-def printInNewline(msg):
-    print('\n' + str(msg))
-
-
-def printIndent(msg):
-    print("    " + str(msg))
 
 
 class Rsync:
@@ -102,7 +53,7 @@ class Rsync:
             if suspendTouchedDirs:
                 outpLines = Rsync._removeTouchedDirsFromOutput(outpLines, dst)
         else:
-            printError("Something went wrong with rsync call.\
+            User.print_error("Something went wrong with rsync call.\
                         Maybe it's api has changed? Please inform the author.")
             return
         return outpLines
@@ -114,14 +65,14 @@ class Rsync:
         outpLines = Rsync._run(command, suspendPrintDirs,
                                suspendPrintDirs, dst)
         if outpLines:
-            printInNewline("THIS FILES WILL BE MODIFIED in \"" + dst + "\":")
+            User.print_in_newline("THIS FILES WILL BE MODIFIED in \"" + dst + "\":")
             for oL in outpLines:
-                printIndent(oL)
+                User.print_indent(oL)
             question = "MODIFY FILES LISTED ABOVE\
                         (OTHER WILL BE COPIED ANYWAY)? "
-            return userChoose(question, "Modify", "No")
+            return User.decide(question, "Modify", "No")
         else:
-            printInNewline("NO FILES TO MODIFY in \"" + dst + "\"")
+            User.print_in_newline("NO FILES TO MODIFY in \"" + dst + "\"")
 
     @classmethod
     def shallDeleteInDst(cls, srcsLst, dst, suspendPrintDirs):
@@ -130,26 +81,26 @@ class Rsync:
         command = command + Rsync._pathsForRsync(srcsLst, dst)
         outpLines = Rsync._run(command, suspendPrintDirs, True, dst)
         if outpLines:
-            printInNewline("THIS FILES WILL BE DELETED in \"" + dst + "\":")
+            User.print_in_newline("THIS FILES WILL BE DELETED in \"" + dst + "\":")
             for oL in outpLines:
-                printIndent(oL)
+                User.print_indent(oL)
             question = "DELETE FILES LISTED ABOVE\
                         (OTHER WILL BE COPIED ANYWAY)? "
-            return userChoose(question, "Delete", "No")
+            return User.decide(question, "Delete", "No")
 
     @classmethod
     def sync(cls, srcsLst, dst, options, verbose):
         if verbose:
-            printInNewline("COPYING:")
+            User.print_in_newline("COPYING:")
             for s in srcsLst:
-                printIndent(s)
-            printInfo("TO:")
-            printIndent(dst)
+                User.print_indent(s)
+            User.print_info("TO:")
+            User.print_indent(dst)
         command = ["rsync", "-a", "-v", "-h", "-P"]
         command = command + options
         command = command + Rsync._pathsForRsync(srcsLst, dst)
         if verbose:
-            if not userChoose("DO YOU WANT TO EXECUTE COMMAND:\n"
+            if not User.decide("DO YOU WANT TO EXECUTE COMMAND:\n"
                               + str(command) + "\n", "yes", "no"):
                 return
         result = subprocess.run(args=command, stdout=subprocess.PIPE,
@@ -158,17 +109,17 @@ class Rsync:
         printNoSrc = False
         printHintTreeMode = False
         for outp in output:
-            printIndent(outp)
+            User.print_indent(outp)
             if "failed: No such file or directory" in outp:
                 if "rsync: link_stat" in outp or "rsync: change_dir" in outp:
                     printNoSrc = True
                 if "rsync: mkdir" in outp:
                     printHintTreeMode = True
         if printNoSrc:
-            printInfo("NO SOURCE DIRECTORY, rsync COMMAND FAILED!")
+            User.print_info("NO SOURCE DIRECTORY, rsync COMMAND FAILED!")
         if printHintTreeMode:
-            printInfo("NO DESTINATION DIRECTORY, rsync COMMAND FAILED!")
-            printIndent("TRY TO RUN WITH --tree OPTION FIRST!")
+            User.print_info("NO DESTINATION DIRECTORY, rsync COMMAND FAILED!")
+            User.print_indent("TRY TO RUN WITH --tree OPTION FIRST!")
 
 
 class Flags:
@@ -245,10 +196,10 @@ class Mode:
             if Path.is_accessible(parent):
                 tempDsts.append(dL)
             else:
-                printInfo("COPYING TO \"" + str(dL) + "\" NOT POSSIBLE")
-                printIndent("directory \"" + str(parent) +
+                User.print_info("COPYING TO \"" + str(dL) + "\" NOT POSSIBLE")
+                User.print_indent("directory \"" + str(parent) +
                             "\" doesn't exist or is unaccessible!")
-                printIndent("TRY TO RUN WITH --tree OPTION FIRST!")
+                User.print_indent("TRY TO RUN WITH --tree OPTION FIRST!")
         self.dsts = tempDsts
         if not self.dsts:
             return
@@ -257,9 +208,9 @@ class Mode:
             if Path.is_accessible(sL):
                 tempSrcs.append(sL)
             else:
-                printInfo("SOURCE \"" + str(sL) +
+                User.print_info("SOURCE \"" + str(sL) +
                           "\" doesn't exist or is unaccessible!")
-                printIndent("COPYING THIS SOURCE WILL BE ABORTED!")
+                User.print_indent("COPYING THIS SOURCE WILL BE ABORTED!")
                 del sL
         self.srcs = tempSrcs
         if not self.srcs:
@@ -280,7 +231,7 @@ class BackupMode(Mode):
         if not super().loadAndCheck(applicable):
             return
         if self.applicable["fBackup"]:
-            self.applicable["srcLocation"] = userSelectLocation(
+            self.applicable["srcLocation"] = User.select_location(
                 self.applicable["work"], "WORK")
         else:
             self.applicable["srcLocation"] = self.applicable["fWork"][0]
@@ -299,11 +250,11 @@ class WorkMode(Mode):
             return
         if self.applicable["fBackup"]:
             self.applicable["dstLocations"] = [
-                userSelectLocation(self.applicable["work"], "WORK")]
+                User.select_location(self.applicable["work"], "WORK")]
             self.applicable["srcLocation"] = self.applicable["fBackup"][0]
         else:
             self.applicable["dstLocations"] = [self.applicable["fWork"][0]]
-            self.applicable["srcLocation"] = userSelectLocation(
+            self.applicable["srcLocation"] = User.select_location(
                 self.applicable["backup"], "BACKUP")
         if self.applicable["dstLocations"][0] \
                 and self.applicable["srcLocation"]:
@@ -329,10 +280,10 @@ class TransferMode(Mode):
         if not super().loadAndCheck(applicable):
             return
         if len(self.applicable["backup"]) < 2:
-            printInfo("Bad usage. There must be at least two BACKUP\
+            User.print_info("Bad usage. There must be at least two BACKUP\
                        locations defined for this configuration!")
             return
-        self.applicable["srcLocation"] = userSelectLocation(
+        self.applicable["srcLocation"] = User.select_location(
             self.applicable["backup"], "SOURCE BACKUP")
         if not self.applicable["srcLocation"]:
             return
@@ -341,7 +292,7 @@ class TransferMode(Mode):
         self.applicable["dstLocations"] = []
         onlyOneRemainingInitially = len(remaining) == 1
         while True:
-            location = userSelectLocation(remaining, "DESTINATION BACKUP")
+            location = User.select_location(remaining, "DESTINATION BACKUP")
             if not location:
                 return
             self.applicable["dstLocations"].append(location)
@@ -353,13 +304,13 @@ class TransferMode(Mode):
                 if len(remaining) == 1 and not onlyOneRemainingInitially:
                     question = "Do you want to add this DESTINATION BACKUP\
                                 location too?\n"
-                    if userChoose(question + remaining[0] + "\n", "Y", "N"):
+                    if User.decide(question + remaining[0] + "\n", "Y", "N"):
                         self.applicable["dstLocations"].append(remaining[0])
                     break
                 else:
                     question = "Do you want to add more DESTINATION BACKUP\
                                 locations? "
-                    if not userChoose(question, "Y", "N"):
+                    if not User.decide(question, "Y", "N"):
                         break
         return True
 
@@ -387,12 +338,12 @@ def xor(a, b):
 
 
 def printValidSyntaxInfo(programName):
-    printError("Valid syntax is:")
+    User.print_error("Valid syntax is:")
     for mode in modes:
         optString = ""
         for char in mode.options:
             optString += " [-" + char + "]"
-        printIndent(programName + " --" + mode.name + optString + " path...")
+        User.print_indent(programName + " --" + mode.name + optString + " path...")
 
 
 def parseInputArguments(arguments):
@@ -416,12 +367,12 @@ def parseInputArguments(arguments):
                     return None, None, None
                 for path in paths:
                     if not Path.is_accessible(path):
-                        printError("Invalid path: " + path)
+                        User.print_error("Invalid path: " + path)
                         return None, None, None
                 rootPath = Path.parent_dir(paths[0])
                 for path in paths:
                     if rootPath != Path.parent_dir(path):
-                        printError("Given paths must be in the same location")
+                        User.print_error("Given paths must be in the same location")
                         return None, None, None
                 return retMode, paths, rootPath
         except getopt.GetoptError:
@@ -435,8 +386,8 @@ def readConfigurations(configFileName):
         try:
             configuration = json.load(configFile)
         except json.JSONDecodeError as e:
-            printError("Invalid JSON config file: " + configFileName + ":")
-            printIndent("Line: " + str(e.lineno) + ", Column: " +
+            User.print_error("Invalid JSON config file: " + configFileName + ":")
+            User.print_indent("Line: " + str(e.lineno) + ", Column: " +
                         str(e.colno) + ", Msg: " + e.msg)
             return None
         return configuration["configs"]
@@ -448,41 +399,41 @@ def verifyConfigurations(configs, configFileName):
         return
     for i, config in enumerate(configs):
         if "name" not in config:
-            printError("Deficient JSON config file: " + configFileName + ":")
-            printIndent("config nr " + str(i) + " has no field \"name\".")
+            User.print_error("Deficient JSON config file: " + configFileName + ":")
+            User.print_indent("config nr " + str(i) + " has no field \"name\".")
             return
         elif "work" not in config:
-            printError("Deficient JSON config file: " + configFileName + ":")
-            printIndent("config \"" + str(i) + "\" has no field \"work\".")
+            User.print_error("Deficient JSON config file: " + configFileName + ":")
+            User.print_indent("config \"" + str(i) + "\" has no field \"work\".")
             return
         elif "backup" not in config:
-            printError("Deficient JSON config file: " + configFileName + ":")
-            printIndent("config \"" + str(i) + "\" has no field \"backup\".")
+            User.print_error("Deficient JSON config file: " + configFileName + ":")
+            User.print_indent("config \"" + str(i) + "\" has no field \"backup\".")
             return
         config["backup"] = Paths.normalize(config["backup"])
         config["work"] = Paths.normalize(config["work"])
         for k, w1 in enumerate(config["work"]):
             for l, w2 in enumerate(config["work"]):
                 if k != l and Path.is_subpath(w1, w2):
-                    printError("Bad work paths in config \"" +
+                    User.print_error("Bad work paths in config \"" +
                                config["name"] + "\"")
-                    printIndent(
+                    User.print_indent(
                         "Paths in work cannot be its subpaths or identical.")
                     return
         for k, b1 in enumerate(config["backup"]):
             for l, b2 in enumerate(config["backup"]):
                 if k != l and Path.is_subpath(b1, b2):
-                    printError("Bad backup paths in config \"" +
+                    User.print_error("Bad backup paths in config \"" +
                                config["name"] + "\"")
-                    printIndent(
+                    User.print_indent(
                         "Paths in backup cannot be its subpaths or identical.")
                     return
         for k, b1 in enumerate(config["backup"]):
             for l, w2 in enumerate(config["work"]):
                 if k != l and Path.is_subpath(b1, w2):
-                    printError("Bad backup or work paths in config \""
+                    User.print_error("Bad backup or work paths in config \""
                                + config["name"] + "\"")
-                    printIndent("Paths in backup and work\
+                    User.print_indent("Paths in backup and work\
                                  cannot be its subpaths or identical.")
                     return
     return configs
@@ -498,23 +449,6 @@ def filterConfig(config, path):
     return config
 
 
-def userSelectConfig(configs):
-    if not configs:
-        return
-    if len(configs) == 1:
-        return configs[0]
-    print("Many configs applicable, select one (Q to cancel and exit):")
-    for configNumber, config in enumerate(configs):
-        if config["fWork"]:
-            print("[" + str(configNumber) + "] in WORK of " +
-                  config["name"] + ": ")
-        if config["fBackup"]:
-            print("[" + str(configNumber) + "] in BACKUP of " +
-                  config["name"] + ": ")
-    num = userSelect(len(configs))
-    if num is None:
-        return
-    return configs[num]
 
 
 def filterApplicableConfigs(configs, paths):
@@ -528,20 +462,20 @@ def filterApplicableConfigs(configs, paths):
         if [True for pConfig in pathsConfig if no_config(pConfig)]:
             continue
         if not configsEqual(pathsConfig):
-            printError("In config: " + config["name"] + ":")
-            printIndent(
+            User.print_error("In config: " + config["name"] + ":")
+            User.print_indent(
                 "All given paths should be in the same WORK xor BACKUP")
             return
         elif pathsConfig:
             pC = pathsConfig[0]
             if pC["fWork"] and pC["fBackup"]:
-                printError("In config: " + config["name"] + ":")
-                printIndent("Given paths cannot be both in WORK and BACKUP.")
+                User.print_error("In config: " + config["name"] + ":")
+                User.print_indent("Given paths cannot be both in WORK and BACKUP.")
                 return
             elif xor(pC["fWork"], pC["fBackup"]):
                 applicableConfigs.append(pC)
     if not applicableConfigs:
-        printError("None of given paths is in WORK or BACKUP")
+        User.print_error("None of given paths is in WORK or BACKUP")
     return applicableConfigs
 
 
@@ -557,7 +491,7 @@ def main(argv):
     applicables = filterApplicableConfigs(configs, paths)
     if not applicables:
         return -1
-    applicable = userSelectConfig(applicables)
+    applicable = User.select_config(applicables)
     if not applicable:
         return -1
     if not mode.loadAndCheck(applicable):
