@@ -1,9 +1,10 @@
 # /usr/bin/python
 
+from paths import Paths, Path
+
 import sys
 import getopt
 import json
-import os.path
 import subprocess
 from copy import copy
 
@@ -43,51 +44,6 @@ def userSelectLocation(location, locationName):
     return location[num]
 
 
-def getAccesiblePaths(paths):
-    return [p for p in paths if os.path.exists(p)]
-
-
-def isAccesiblePath(path):
-    return os.path.exists(path)
-
-
-def prependRoot(root, paths):
-    return [os.path.join(root, p) for p in paths]
-
-
-def makeRelative(root, paths):
-    return [os.path.relpath(p, root) for p in paths]
-
-
-def normalizeList(paths):
-    return [os.path.realpath(os.path.abspath(p)) for p in paths]
-
-
-def normalize(path):
-    return os.path.realpath(os.path.abspath(path))
-
-
-def getParentDir(path):
-    return os.path.dirname(path)
-
-
-def appendSlash(path):
-    if path.strip()[-1] != "/":
-        return path + "/"
-    return path
-
-
-def removeSlash(path):
-    woutWhite = path.strip()
-    if path and woutWhite[-1] == "/" and len(woutWhite) != "/":
-        return path[:-1]
-    return path
-
-
-def isDir(path):
-    return os.path.isdir(path)
-
-
 def cutLastEndline(string):
     if string and string[-1] == '\n':
         string = string[:-1]
@@ -122,9 +78,9 @@ class Rsync:
 
     @classmethod
     def _removeTouchedDirsFromOutput(cls, outpLines, dst):
-        wholePaths = prependRoot(dst, outpLines)
+        wholePaths = Paths.prepend_root(dst, outpLines)
         return [oL for i, oL in enumerate(outpLines)
-                if not isDir(wholePaths[i])]
+                if not Path.is_dir(wholePaths[i])]
 
     @classmethod
     def _removeCreatedDirsFromOutput(cls, outpLines):
@@ -254,14 +210,14 @@ class Mode:
 
     def loadAndCheck(self, applicable):
         self.applicable = applicable
-        self.applicable["backup"] = getAccesiblePaths(
+        self.applicable["backup"] = Paths.filter_accessible(
             self.applicable["backup"])
-        self.applicable["work"] = getAccesiblePaths(self.applicable["work"])
+        self.applicable["work"] = Paths.filter_accessible(self.applicable["work"])
         if self.applicable["fBackup"]:
-            self.applicable["pathsOrigin"] = getAccesiblePaths(
+            self.applicable["pathsOrigin"] = Paths.filter_accessible(
                 self.applicable["fBackup"])[0]
         else:
-            self.applicable["pathsOrigin"] = getAccesiblePaths(
+            self.applicable["pathsOrigin"] = Paths.filter_accessible(
                 self.applicable["fWork"])[0]
         if self.applicable["backup"] and self.applicable["work"] \
                 and self.applicable["pathsOrigin"]:
@@ -270,23 +226,23 @@ class Mode:
             return False
 
     def calculateSrcsAndDsts(self, paths, rootPath):
-        relPaths = makeRelative(self.applicable["pathsOrigin"], paths)
-        self.srcs = prependRoot(self.applicable["srcLocation"], relPaths)
-        self.srcs = normalizeList(self.srcs)
+        relPaths = Paths.make_relative(self.applicable["pathsOrigin"], paths)
+        self.srcs = Paths.prepend_root(self.applicable["srcLocation"], relPaths)
+        self.srcs = Paths.normalize(self.srcs)
         if self.srcs[0] == self.applicable["srcLocation"]:
             relRootPath = "."
-            self.srcs[0] = appendSlash(self.srcs[0])
+            self.srcs[0] = Path.append_slash(self.srcs[0])
         else:
-            relRootPath = makeRelative(
+            relRootPath = Paths.make_relative(
                 self.applicable["pathsOrigin"], [rootPath])
         for dstLoc in self.applicable["dstLocations"]:
-            dst = prependRoot(dstLoc, relRootPath)[0]
-            dst = appendSlash(normalize(dst))
+            dst = Paths.prepend_root(dstLoc, relRootPath)[0]
+            dst = Path.append_slash(Path.normalize(dst))
             self.dsts.append(dst)
         tempDsts = []
         for dL in self.dsts:
-            parent = getParentDir(removeSlash(dL))
-            if isAccesiblePath(parent):
+            parent = Path.parent_dir(Path.remove_slash(dL))
+            if Path.is_accessible(parent):
                 tempDsts.append(dL)
             else:
                 printInfo("COPYING TO \"" + str(dL) + "\" NOT POSSIBLE")
@@ -298,7 +254,7 @@ class Mode:
             return
         tempSrcs = []
         for sL in self.srcs:
-            if isAccesiblePath(sL):
+            if Path.is_accessible(sL):
                 tempSrcs.append(sL)
             else:
                 printInfo("SOURCE \"" + str(sL) +
@@ -454,17 +410,17 @@ def parseInputArguments(arguments):
 
                 retMode.options = [opt[1] for opt in opts if is_opt_known(opt)]
                 retMode.updateFlags()
-                paths = normalizeList(args)
+                paths = Paths.normalize(args)
                 if not paths:
                     printValidSyntaxInfo(arguments[0])
                     return None, None, None
                 for path in paths:
-                    if not os.path.exists(path):
+                    if not Path.is_accessible(path):
                         printError("Invalid path: " + path)
                         return None, None, None
-                rootPath = getParentDir(paths[0])
+                rootPath = Path.parent_dir(paths[0])
                 for path in paths:
-                    if rootPath != getParentDir(path):
+                    if rootPath != Path.parent_dir(path):
                         printError("Given paths must be in the same location")
                         return None, None, None
                 return retMode, paths, rootPath
@@ -486,9 +442,6 @@ def readConfigurations(configFileName):
         return configuration["configs"]
 
 
-def isSubpath(basepath, subpath):
-    return basepath == (os.path.commonpath([basepath, subpath]))
-
 
 def verifyConfigurations(configs, configFileName):
     if not configs:
@@ -506,11 +459,11 @@ def verifyConfigurations(configs, configFileName):
             printError("Deficient JSON config file: " + configFileName + ":")
             printIndent("config \"" + str(i) + "\" has no field \"backup\".")
             return
-        config["backup"] = normalizeList(config["backup"])
-        config["work"] = normalizeList(config["work"])
+        config["backup"] = Paths.normalize(config["backup"])
+        config["work"] = Paths.normalize(config["work"])
         for k, w1 in enumerate(config["work"]):
             for l, w2 in enumerate(config["work"]):
-                if k != l and isSubpath(w1, w2):
+                if k != l and Path.is_subpath(w1, w2):
                     printError("Bad work paths in config \"" +
                                config["name"] + "\"")
                     printIndent(
@@ -518,7 +471,7 @@ def verifyConfigurations(configs, configFileName):
                     return
         for k, b1 in enumerate(config["backup"]):
             for l, b2 in enumerate(config["backup"]):
-                if k != l and isSubpath(b1, b2):
+                if k != l and Path.is_subpath(b1, b2):
                     printError("Bad backup paths in config \"" +
                                config["name"] + "\"")
                     printIndent(
@@ -526,7 +479,7 @@ def verifyConfigurations(configs, configFileName):
                     return
         for k, b1 in enumerate(config["backup"]):
             for l, w2 in enumerate(config["work"]):
-                if k != l and isSubpath(b1, w2):
+                if k != l and Path.is_subpath(b1, w2):
                     printError("Bad backup or work paths in config \""
                                + config["name"] + "\"")
                     printIndent("Paths in backup and work\
@@ -539,9 +492,9 @@ def filterConfig(config, path):
     config["fWork"] = []
     config["fBackup"] = []
     config["fWork"] = [wPath for wPath in config["work"]
-                       if isSubpath(wPath, path)]
+                       if Path.is_subpath(wPath, path)]
     config["fBackup"] = [
-        bPath for bPath in config["backup"] if isSubpath(bPath, path)]
+        bPath for bPath in config["backup"] if Path.is_subpath(bPath, path)]
     return config
 
 
