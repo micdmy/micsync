@@ -3,114 +3,17 @@
 from paths import Paths, Path
 from user import User
 from configurations import Configurations
-
+from backup_mode import BackupMode
+from work_mode import WorkMode
+from transfer_mode import TransferMode
+from tree_mode import TreeMode
 import sys
 import getopt
-
-
-
-
-
-class BackupMode(Mode):
-    def __init__(self, name, options):
-        super().__init__(name, options)
-
-    def loadAndCheck(self, applicable):
-        if not super().loadAndCheck(applicable):
-            return
-        if self.applicable["fBackup"]:
-            self.applicable["srcLocation"] = User.select_location(
-                self.applicable["work"], "WORK")
-        else:
-            self.applicable["srcLocation"] = self.applicable["fWork"][0]
-        if not self.applicable["srcLocation"]:
-            return
-        self.applicable["dstLocations"] = self.applicable["backup"]
-        return True
-
-
-class WorkMode(Mode):
-    def __init__(self, name, options):
-        super().__init__(name, options)
-
-    def loadAndCheck(self, applicable):
-        if not super().loadAndCheck(applicable):
-            return
-        if self.applicable["fBackup"]:
-            self.applicable["dstLocations"] = [
-                User.select_location(self.applicable["work"], "WORK")]
-            self.applicable["srcLocation"] = self.applicable["fBackup"][0]
-        else:
-            self.applicable["dstLocations"] = [self.applicable["fWork"][0]]
-            self.applicable["srcLocation"] = User.select_location(
-                self.applicable["backup"], "BACKUP")
-        if self.applicable["dstLocations"][0] \
-                and self.applicable["srcLocation"]:
-            return True
-        return
-
-
-class TreeMode(WorkMode):
-    def __init__(self, name, options):
-        super().__init__(name, options)
-
-    def perform(self):
-        for dst in self.dsts:
-            options = self.flags.getRsyncOptions(dst, self.srcs) + Rsync.TREE
-            Rsync.sync(self.srcs, dst, options, self.flags.verbose)
-
-
-class TransferMode(Mode):
-    def __init__(self, name, options):
-        super().__init__(name, options)
-
-    def loadAndCheck(self, applicable):
-        if not super().loadAndCheck(applicable):
-            return
-        if len(self.applicable["backup"]) < 2:
-            User.print_info("Bad usage. There must be at least two BACKUP\
-                       locations defined for this configuration!")
-            return
-        self.applicable["srcLocation"] = User.select_location(
-            self.applicable["backup"], "SOURCE BACKUP")
-        if not self.applicable["srcLocation"]:
-            return
-        remaining = [bckp for bckp in self.applicable["backup"]
-                     if bckp != self.applicable["srcLocation"]]
-        self.applicable["dstLocations"] = []
-        onlyOneRemainingInitially = len(remaining) == 1
-        while True:
-            location = User.select_location(remaining, "DESTINATION BACKUP")
-            if not location:
-                return
-            self.applicable["dstLocations"].append(location)
-            remaining = [rem for rem in remaining if rem !=
-                         self.applicable["dstLocations"][-1]]
-            if len(remaining) < 1:
-                break
-            else:
-                if len(remaining) == 1 and not onlyOneRemainingInitially:
-                    question = "Do you want to add this DESTINATION BACKUP\
-                                location too?\n"
-                    if User.decide(question + remaining[0] + "\n", "Y", "N"):
-                        self.applicable["dstLocations"].append(remaining[0])
-                    break
-                else:
-                    question = "Do you want to add more DESTINATION BACKUP\
-                                locations? "
-                    if not User.decide(question, "Y", "N"):
-                        break
-        return True
-
 
 modes = [BackupMode("backup", "msv"),
          WorkMode("work", "mdDsv"),
          TransferMode("transfer", "mdDsv"),
          TreeMode("tree", "vs")]
-
-
-
-
 
 
 def printValidSyntaxInfo(programName):
@@ -155,7 +58,6 @@ def parseInputArguments(arguments):
             pass
     printValidSyntaxInfo(arguments[0])
     return None, None, None
-
 
 
 def main(argv):
