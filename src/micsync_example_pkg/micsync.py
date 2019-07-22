@@ -2,12 +2,11 @@
 
 from paths import Paths, Path
 from user import User
+from configurations import Configurations
 
 import sys
 import getopt
-import json
 import subprocess
-from copy import copy
 
 
 class Rsync:
@@ -314,20 +313,8 @@ modes = [BackupMode("backup", "msv"),
          TreeMode("tree", "vs")]
 
 
-def configsEqual(configs):
-    if not configs:
-        return True
-    c = configs[0]
-    for config in configs:
-        if c != config:
-            return False
-    return True
 
 
-def xor(a, b):
-    a = bool(a)
-    b = bool(b)
-    return (a and not b) or (not a and b)
 
 
 def printValidSyntaxInfo(programName):
@@ -374,114 +361,17 @@ def parseInputArguments(arguments):
     return None, None, None
 
 
-def readConfigurations(configFileName):
-    with open(configFileName, "r") as configFile:
-        try:
-            configuration = json.load(configFile)
-        except json.JSONDecodeError as e:
-            User.print_error("Invalid JSON config file: " + configFileName + ":")
-            User.print_indent("Line: " + str(e.lineno) + ", Column: " +
-                        str(e.colno) + ", Msg: " + e.msg)
-            return None
-        return configuration["configs"]
-
-
-
-def verifyConfigurations(configs, configFileName):
-    if not configs:
-        return
-    for i, config in enumerate(configs):
-        if "name" not in config:
-            User.print_error("Deficient JSON config file: " + configFileName + ":")
-            User.print_indent("config nr " + str(i) + " has no field \"name\".")
-            return
-        elif "work" not in config:
-            User.print_error("Deficient JSON config file: " + configFileName + ":")
-            User.print_indent("config \"" + str(i) + "\" has no field \"work\".")
-            return
-        elif "backup" not in config:
-            User.print_error("Deficient JSON config file: " + configFileName + ":")
-            User.print_indent("config \"" + str(i) + "\" has no field \"backup\".")
-            return
-        config["backup"] = Paths.normalize(config["backup"])
-        config["work"] = Paths.normalize(config["work"])
-        for k, w1 in enumerate(config["work"]):
-            for l, w2 in enumerate(config["work"]):
-                if k != l and Path.is_subpath(w1, w2):
-                    User.print_error("Bad work paths in config \"" +
-                               config["name"] + "\"")
-                    User.print_indent(
-                        "Paths in work cannot be its subpaths or identical.")
-                    return
-        for k, b1 in enumerate(config["backup"]):
-            for l, b2 in enumerate(config["backup"]):
-                if k != l and Path.is_subpath(b1, b2):
-                    User.print_error("Bad backup paths in config \"" +
-                               config["name"] + "\"")
-                    User.print_indent(
-                        "Paths in backup cannot be its subpaths or identical.")
-                    return
-        for k, b1 in enumerate(config["backup"]):
-            for l, w2 in enumerate(config["work"]):
-                if k != l and Path.is_subpath(b1, w2):
-                    User.print_error("Bad backup or work paths in config \""
-                               + config["name"] + "\"")
-                    User.print_indent("Paths in backup and work\
-                                 cannot be its subpaths or identical.")
-                    return
-    return configs
-
-
-def filterConfig(config, path):
-    config["fWork"] = []
-    config["fBackup"] = []
-    config["fWork"] = [wPath for wPath in config["work"]
-                       if Path.is_subpath(wPath, path)]
-    config["fBackup"] = [
-        bPath for bPath in config["backup"] if Path.is_subpath(bPath, path)]
-    return config
-
-
-
-
-def filterApplicableConfigs(configs, paths):
-    applicableConfigs = []
-    for config in configs:
-        pathsConfig = [filterConfig(copy(config), path) for path in paths]
-
-        def no_config(pCfg):
-            return not pCfg["fBackup"] and not pCfg["fWork"]
-
-        if [True for pConfig in pathsConfig if no_config(pConfig)]:
-            continue
-        if not configsEqual(pathsConfig):
-            User.print_error("In config: " + config["name"] + ":")
-            User.print_indent(
-                "All given paths should be in the same WORK xor BACKUP")
-            return
-        elif pathsConfig:
-            pC = pathsConfig[0]
-            if pC["fWork"] and pC["fBackup"]:
-                User.print_error("In config: " + config["name"] + ":")
-                User.print_indent("Given paths cannot be both in WORK and BACKUP.")
-                return
-            elif xor(pC["fWork"], pC["fBackup"]):
-                applicableConfigs.append(pC)
-    if not applicableConfigs:
-        User.print_error("None of given paths is in WORK or BACKUP")
-    return applicableConfigs
-
 
 def main(argv):
     mode, paths, rootPath = parseInputArguments(argv)
     if not mode or not paths or not rootPath:
         return -1
-    configFileName = "./.micsync.json"
-    configs = readConfigurations(configFileName)
-    configs = verifyConfigurations(configs, configFileName)
+    config_file_name = "./.micsync.json"
+    configs = Configurations.read_from_file(config_file_name)
+    configs = Configurations.verify(configs, config_file_name)
     if not configs:
         return -1
-    applicables = filterApplicableConfigs(configs, paths)
+    applicables = Configurations.filter_applicable(configs, paths)
     if not applicables:
         return -1
     applicable = User.select_config(applicables)
