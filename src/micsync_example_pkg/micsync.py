@@ -10,13 +10,6 @@ import subprocess
 from copy import copy
 
 
-
-def cutLastEndline(string):
-    if string and string[-1] == '\n':
-        string = string[:-1]
-    return string
-
-
 class Rsync:
     NO_OPTIONS = []
     DELETE = ["--delete"]
