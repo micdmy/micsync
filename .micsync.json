@@ -1,22 +1,22 @@
 {
 			"configs": [ {
-				"name": "outer config",
+				"name": "w:1, b:23 config",
 				"work": [
-					"/data/projects/micsync/tests/d1"
+					"/data/projects/tests-micsync/d1"
 				],
 				"backup": [
-					"./tests/d2/d2-1/",
-					"./tests/d2/d2-2/",
-					"/run/media/mic/externdata/"
+					"/data/projects/tests-micsync/d2",
+					"/data/projects/tests-micsync/d3"
 				]
 			},
 			{
-				"name": "inner config",
+				"name": "w:45, b:6 config",
 				"work": [
-					"./tests/d1/d1-2/"
+					"/data/projects/tests-micsync/d4",
+					"/data/projects/tests-micsync/d5"
 				],
 				"backup": [
-					"./tests/d2/d2-2/"
+					"/data/projects/tests-micsync/d6"
 				]
 			}	
 		]
