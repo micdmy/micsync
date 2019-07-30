@@ -10,10 +10,6 @@ from tree_mode import TreeMode
 import sys
 import getopt
 
-modes = [BackupMode("backup", "msv"),
-         WorkMode("work", "mdDsv"),
-         TransferMode("transfer", "mdDsv"),
-         TreeMode("tree", "vs")]
 
 
 def printValidSyntaxInfo(programName):
@@ -58,6 +54,78 @@ def parseInputArguments(arguments):
             pass
     printValidSyntaxInfo(arguments[0])
     return None, None, None
+
+class Micsync:
+    def __init__(self, options, mode_name, paths):
+        self.modes = [BackupMode("backup", "msv"),
+                      WorkMode("work", "mdDsv"),
+                      TransferMode("transfer", "mdDsv"),
+                      TreeMode("tree", "vs")]
+        if(options and mode_name and paths):
+            self.set_mode(mode_name)
+            self.set_options(options)
+            self.set_paths(paths)
+
+
+    def _init_with_arguments(arguments):
+        for mode in self.modes:
+            try:
+                opts, args = getopt.getopt(
+                    arguments[1:], mode.options, [mode.name])
+                opts = [opt[0] for opt in opts]
+                if ("--" + mode.name) in opts:
+                    set_mode(mode.name)
+
+                    def has_option_syntax(opt):
+                        return len(opt) == 2 and opt[0] == "-"
+
+                    self.set_options([opt[1] for opt in opts if has_valid_syntax(opt)])
+
+                    paths = Paths.normalize(args)
+                    if not paths:
+                        printValidSyntaxInfo(arguments[0])
+                        return None, None, None
+                    for path in paths:
+                        if not Path.is_accessible(path):
+                            User.print_error("Invalid path: " + path)
+                            return None, None, None
+                    rootPath = Path.parent_dir(paths[0])
+                    for path in paths:
+                        if rootPath != Path.parent_dir(path):
+                            User.print_error("Given paths must be in the same location")
+                            return None, None, None
+                    return retMode, paths, rootPath
+            except getopt.GetoptError:
+                pass
+        printValidSyntaxInfo(arguments[0])
+        return None, None, None
+
+        
+    def set_mode(mode_name):
+        self.mode = None
+        for mode in self.modes:
+            if mode.name == mode_name
+                self.mode = mode
+        if(not self.mode)
+            #except    
+
+
+    def set_options(options):
+        if(not self.mode)
+            #except    
+        unknown_opts = [opt for opt in options if opt not in mode.options]
+        if(unknown_opts)
+            #except
+        self.mode.options = [opt for opt in options if opt in mode.options]
+        self.mode.updateFlags();
+
+        
+
+
+
+    def set_paths(paths):
+
+    def sync():
 
 
 def main(argv):
