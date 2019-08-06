@@ -11,93 +11,52 @@ import sys
 import getopt
 
 
-
-def printValidSyntaxInfo(programName):
-    User.print_error("Valid syntax is:")
-    for mode in modes:
-        optString = ""
-        for char in mode.options:
-            optString += " [-" + char + "]"
-        User.print_indent(programName + " --" + mode.name + optString + " path...")
-
-
-def parseInputArguments(arguments):
-    for mode in modes:
-        try:
-            opts, args = getopt.getopt(
-                arguments[1:], mode.options, [mode.name])
-            opts = [opt[0] for opt in opts]
-            if ("--" + mode.name) in opts:
-                retMode = mode
-
-                def is_opt_known(opt):
-                    return all([len(opt) == 2,
-                                opt[0] == "-", opt[1] in mode.options])
-
-                retMode.options = [opt[1] for opt in opts if is_opt_known(opt)]
-                retMode.updateFlags()
-                paths = Paths.normalize(args)
-                if not paths:
-                    printValidSyntaxInfo(arguments[0])
-                    return None, None, None
-                for path in paths:
-                    if not Path.is_accessible(path):
-                        User.print_error("Invalid path: " + path)
-                        return None, None, None
-                rootPath = Path.parent_dir(paths[0])
-                for path in paths:
-                    if rootPath != Path.parent_dir(path):
-                        User.print_error("Given paths must be in the same location")
-                        return None, None, None
-                return retMode, paths, rootPath
-        except getopt.GetoptError:
-            pass
-    printValidSyntaxInfo(arguments[0])
-    return None, None, None
-
 class Micsync:
-    def __init__(self, options, mode_name, paths):
+    def __init__(self, mode_name, options, paths):
         self.modes = [BackupMode("backup", "msv"),
                       WorkMode("work", "mdDsv"),
                       TransferMode("transfer", "mdDsv"),
                       TreeMode("tree", "vs")]
-        if(options and mode_name and paths):
+        self.program_name = "micsync"
+        if(mode_name)
             self.set_mode(mode_name)
             self.set_options(options)
+        if(paths)
             self.set_paths(paths)
 
-
     def _init_with_arguments(arguments):
+        self.program_name = arguments[0]
         for mode in self.modes:
             try:
                 opts, args = getopt.getopt(
                     arguments[1:], mode.options, [mode.name])
                 opts = [opt[0] for opt in opts]
                 if ("--" + mode.name) in opts:
-                    set_mode(mode.name)
-
-                    def has_option_syntax(opt):
-                        return len(opt) == 2 and opt[0] == "-"
-
-                    self.set_options([opt[1] for opt in opts if has_valid_syntax(opt)])
-
-                    paths = Paths.normalize(args)
-                    if not paths:
-                        printValidSyntaxInfo(arguments[0])
+                    try:
+                        self.set_mode(mode.name)
+                    except Mode_Exception:
+                        print_valid_syntax_info()
                         return None, None, None
-                    for path in paths:
-                        if not Path.is_accessible(path):
-                            User.print_error("Invalid path: " + path)
-                            return None, None, None
-                    rootPath = Path.parent_dir(paths[0])
-                    for path in paths:
-                        if rootPath != Path.parent_dir(path):
-                            User.print_error("Given paths must be in the same location")
-                            return None, None, None
-                    return retMode, paths, rootPath
+
+                    try:
+                        def has_option_syntax(opt):
+                            return len(opt) == 2 and opt[0] == "-"
+                        self.set_options([opt[1] for opt in opts if has_valid_syntax(opt)])
+                    except Options_Exception:
+                        print_valid_syntax_info()
+                        return None, None, None
+
+                    try:
+                        self.set_paths(args)
+                    except Missing_Paths_Exception:
+                        print_valid_syntax_info()
+                        return None, None, None
+                    except (Invalid_Paths_Exception, Different_Location_Exception) as exception:
+                        User.print_error(exception.args["message"])
+                        return None, None, None
             except getopt.GetoptError:
                 pass
-        printValidSyntaxInfo(arguments[0])
+        print_valid_syntax_info()
         return None, None, None
 
         
@@ -107,25 +66,67 @@ class Micsync:
             if mode.name == mode_name
                 self.mode = mode
         if(not self.mode)
-            #except    
-
+            raise Micsync.Mode_Exception({"message": "Unknown mode.",
+                                          "mode name" : mode_name})
 
     def set_options(options):
         if(not self.mode)
-            #except    
+           raise Options_Exception({"message" : "Mode not set."})    
         unknown_opts = [opt for opt in options if opt not in mode.options]
         if(unknown_opts)
-            #except
+           raise Options_Exception({"message" : "Unknown options."},
+                                    "unknown" : unknown_opts})    
         self.mode.options = [opt for opt in options if opt in mode.options]
         self.mode.updateFlags();
 
-        
-
-
-
     def set_paths(paths):
+        self._root_path = None
+        self._paths = None
+        paths = Paths.normalize(paths)
+        if not paths:
+            raise Missing_Paths_Exception("message" : "Paths missing")
+        for path in paths:
+            if not Path.is_accessible(path):
+                raise Invalid_Paths_Exception({"message" : str(path) + " : No such file or directory."})
+        root_path = Path.parent_dir(paths[0])
+        for path in paths:
+            if rootPath != Path.parent_dir(path):
+                raise Different_Location_Exception({"message" : "Paths must be in the same location."
+                                                    "paths" : [paths[0], path]})
+       self._root_path = root_path 
+       self._paths = paths
 
     def sync():
+        pass
+
+    def print_valid_syntax_info():
+        User.print_error("Valid syntax is:")
+        for mode in self.modes:
+            opt_string = ""
+            for char in mode.options:
+                opt_string += " [-" + char + "]"
+            User.print_indent(self.program_name+ " --" + mode.name + opt_string + " path...")
+
+    class Micsync_Exception(Exception)
+        pass
+
+    class Mode_Exception(Micsync_Exception):
+        pass
+
+    class Paths_Exception(Micsync_Exception):
+        pass
+    
+    class Missing_Paths_Exception(Paths_exception):
+        pass
+    
+    class Invalid_Paths_Exception(Paths_exception):
+        pass
+
+    class Different_Location_exception(Paths_exception):
+        pass
+
+    class Options_Exception(Micsync_Exception):
+        pass
 
 
 def main(argv):
