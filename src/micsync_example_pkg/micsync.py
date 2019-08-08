@@ -18,6 +18,7 @@ class Micsync:
                       TransferMode("transfer", "mdDsv"),
                       TreeMode("tree", "vs")]
         self.program_name = "micsync"
+        self.config_file_name = "./.micsync.json"
         if(mode_name)
             self.set_mode(mode_name)
             self.set_options(options)
@@ -59,6 +60,8 @@ class Micsync:
         print_valid_syntax_info()
         return None, None, None
 
+    def set_config_file(config_file_name):
+        self.config_file_name = config_file_name
         
     def set_mode(mode_name):
         self.mode = None
@@ -84,7 +87,7 @@ class Micsync:
         self._paths = None
         paths = Paths.normalize(paths)
         if not paths:
-            raise Missing_Paths_Exception("message" : "Paths missing")
+            raise Missing_Paths_Exception({"message" : "Paths missing"})
         for path in paths:
             if not Path.is_accessible(path):
                 raise Invalid_Paths_Exception({"message" : str(path) + " : No such file or directory."})
@@ -97,7 +100,25 @@ class Micsync:
        self._paths = paths
 
     def sync():
-        pass
+        if not self.mode:
+            raise Mode_Exception
+        if not self.paths
+            raise Missing_Paths_Exception({"message" : "Paths missing"})
+        configs = Configurations.read_from_file(self.config_file_name)
+        configs = Configurations.verify(configs, self.config_file_name)
+        if not configs:
+            return -1
+        applicables = Configurations.filter_applicable(configs, self.paths)
+        if not applicables:
+            return -1
+        applicable = User.select_config(applicables)
+        if not applicable:
+            return -1
+        if not mode.loadAndCheck(applicable):
+            return -1
+        if not mode.calculateSrcsAndDsts(paths, rootPath):
+            return -1
+        mode.perform()
 
     def print_valid_syntax_info():
         User.print_error("Valid syntax is:")
@@ -128,28 +149,3 @@ class Micsync:
     class Options_Exception(Micsync_Exception):
         pass
 
-
-def main(argv):
-    mode, paths, rootPath = parseInputArguments(argv)
-    if not mode or not paths or not rootPath:
-        return -1
-    config_file_name = "./.micsync.json"
-    configs = Configurations.read_from_file(config_file_name)
-    configs = Configurations.verify(configs, config_file_name)
-    if not configs:
-        return -1
-    applicables = Configurations.filter_applicable(configs, paths)
-    if not applicables:
-        return -1
-    applicable = User.select_config(applicables)
-    if not applicable:
-        return -1
-    if not mode.loadAndCheck(applicable):
-        return -1
-    if not mode.calculateSrcsAndDsts(paths, rootPath):
-        return -1
-    mode.perform()
-
-
-if __name__ == "__main__":
-    main(sys.argv)
