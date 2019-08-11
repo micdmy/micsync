@@ -1,5 +1,5 @@
 # /usr/bin/python
-from mode import Mode
+from .mode import Mode
 
 
 class WorkMode(Mode):

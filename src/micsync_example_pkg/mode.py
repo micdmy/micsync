@@ -1,7 +1,7 @@
 # /usr/bin/python
-from flags import Flags
-from user import User
-from rsync import Rsync
+from .flags import Flags
+from .user import User
+from .rsync import Rsync
 
 
 class Mode:

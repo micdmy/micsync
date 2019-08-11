@@ -1,5 +1,5 @@
 # /usr/bin/python
-from work_mode import WorkMode
+from .work_mode import WorkMode
 
 
 class TreeMode(WorkMode):
