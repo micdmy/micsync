@@ -6,9 +6,13 @@ name = "micsync_example_pkg"
 
 
 class MicsyncFriend(Micsync):
+    def __init__(self, mode_name, options, paths):
+        super().__init__(mode_name, options, paths)
+
+    def init_with_arguments(self, arguments):
+        super()._init_with_arguments(arguments)
 
 
-
-program = Micsync(None, None, None)
-if program._init_with_arguments(sys.argv):
+program = MicsyncFriend(None, None, None)
+if program.init_with_arguments(sys.argv):
     program.sync()
