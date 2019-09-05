@@ -2,6 +2,7 @@
 from .mode import Mode
 from .user import User
 
+
 class TransferMode(Mode):
     def __init__(self, name, options):
         super().__init__(name, options)

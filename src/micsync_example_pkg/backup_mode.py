@@ -1,5 +1,6 @@
 # /usr/bin/python
 from .mode import Mode
+from .user import User
 
 
 class BackupMode(Mode):

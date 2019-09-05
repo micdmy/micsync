@@ -1,5 +1,6 @@
 # /usr/bin/python
 from .work_mode import WorkMode
+from .rsync import Rsync
 
 
 class TreeMode(WorkMode):

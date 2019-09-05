@@ -1,4 +1,5 @@
 # /usr/bin/python
+from .rsync import Rsync
 
 
 class Flags:

@@ -2,12 +2,15 @@
 from .user import User
 import subprocess
 
+from .paths import Paths
+from .paths import Path
+
 
 class Rsync:
     NO_OPTIONS = []
     DELETE = ["--delete"]
     NO_MODIFY = ["--ignore-existing"]
-    TREE = ["--include=*/"] + ["--exclude=*"] # sequence is important here
+    TREE = ["--include=*/"] + ["--exclude=*"]  # sequence is important here
 
     @classmethod
     def _pathsForRsync(cls, srcsLst, dst):
@@ -51,7 +54,8 @@ class Rsync:
         outpLines = Rsync._run(command, suspendPrintDirs,
                                suspendPrintDirs, dst)
         if outpLines:
-            User.print_in_newline("THIS FILES WILL BE MODIFIED in \"" + dst + "\":")
+            text = "THIS FILES WILL BE MODIFIED in \"" + dst + "\":"
+            User.print_in_newline(text)
             for oL in outpLines:
                 User.print_indent(oL)
             question = "MODIFY FILES LISTED ABOVE\
@@ -67,7 +71,8 @@ class Rsync:
         command = command + Rsync._pathsForRsync(srcsLst, dst)
         outpLines = Rsync._run(command, suspendPrintDirs, True, dst)
         if outpLines:
-            User.print_in_newline("THIS FILES WILL BE DELETED in \"" + dst + "\":")
+            text = "THIS FILES WILL BE DELETED in \"" + dst + "\":"
+            User.print_in_newline(text)
             for oL in outpLines:
                 User.print_indent(oL)
             question = "DELETE FILES LISTED ABOVE\

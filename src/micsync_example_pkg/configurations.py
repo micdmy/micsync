@@ -2,6 +2,8 @@
 from .user import User
 import json
 from copy import copy
+from .paths import Paths
+from .paths import Path
 
 
 class Configurations:
@@ -102,14 +104,15 @@ class Configurations:
 
         applicable_configs = []
         for config in configs:
-            paths_config = [_filter(copy(config), path) for path in paths]
+            apply_filter = Configurations._filter
+            paths_config = [apply_filter(copy(config), path) for path in paths]
 
             def no_config(p_cfg):
                 return not p_cfg["fBackup"] and not p_cfg["fWork"]
 
             if [True for p_config in paths_config if no_config(p_config)]:
                 continue
-            if not _are_equal(paths_config):
+            if not Configurations._are_equal(paths_config):
                 User.print_error("In config: " + config["name"] + ":")
                 User.print_indent(
                     "All given paths should be in the same WORK xor BACKUP")

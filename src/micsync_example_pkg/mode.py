@@ -2,6 +2,8 @@
 from .flags import Flags
 from .user import User
 from .rsync import Rsync
+from .paths import Paths
+from .paths import Path
 
 
 class Mode:
@@ -20,7 +22,8 @@ class Mode:
         self.applicable = applicable
         self.applicable["backup"] = Paths.filter_accessible(
             self.applicable["backup"])
-        self.applicable["work"] = Paths.filter_accessible(self.applicable["work"])
+        self.applicable["work"] = Paths.filter_accessible(
+                                            self.applicable["work"])
         if self.applicable["fBackup"]:
             self.applicable["pathsOrigin"] = Paths.filter_accessible(
                 self.applicable["fBackup"])[0]
@@ -34,8 +37,8 @@ class Mode:
             return False
 
     def calculateSrcsAndDsts(self, paths, rootPath):
-        relPaths = Paths.make_relative(self.applicable["pathsOrigin"], paths)
-        self.srcs = Paths.prepend_root(self.applicable["srcLocation"], relPaths)
+        r_paths = Paths.make_relative(self.applicable["pathsOrigin"], paths)
+        self.srcs = Paths.prepend_root(self.applicable["srcLocation"], r_paths)
         self.srcs = Paths.normalize(self.srcs)
         if self.srcs[0] == self.applicable["srcLocation"]:
             relRootPath = "."
