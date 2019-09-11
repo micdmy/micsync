@@ -1,4 +1,5 @@
-pkgname
+# Maintainer: Michal Dmytruszynski <micdmy2@gmail.com>
+pkgname='micsync'
 pgkver
 pkgrel
 pkgdesc
