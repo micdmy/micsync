@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="micsync-micdmy",
-    version="0.0.1",
+    version="0.0.2",
     author="micdmy",
     author_email="micdmy2@gmail.com",
     description="Local data synchronization tool based on rsync.",

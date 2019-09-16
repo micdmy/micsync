@@ -1,14 +1,13 @@
-pkgname=('micsync')
-pgkver=('0.0.1')
-pkgrel=('1')
-pkgdesc
+pkgname=micsync
+pkgver=0.0.1
+pkgrel=1
+pkgdesc=""
 arch=('any')
-url
+url=""
 license=('GPL3')
 depends=('rsync>=3.1.3' 'python')
 makedepends=('python-setuptools')
-source=('https://test.pypi.io/packages/source/m/micsync/micsync-0.0.1.tar.gz')
-#md5sums
+source=('https://files.pythonhosted.org/packages/source/m/micsync-micdmy/micsync-micdmy-0.0.1.tar.gz')
 
 build() {
 	python setup.py build
