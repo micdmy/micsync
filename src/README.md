@@ -83,3 +83,7 @@ Supported actions location (WORKING or BACKUP):
 			Options:
 			-s Suppress information about modifying directories.
 			-v Verbose mode.
+
+How to instal with pip:
+
+python3 -m pip install --index-url https://test.pypi.org/simple/ --no-deps example-pkg-your-username
