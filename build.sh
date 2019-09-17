@@ -3,12 +3,16 @@
 THIS_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd ${THIS_SCRIPT_DIR}
 
-python3 ${THIS_SCRIPT_DIR}/setup.py sdist bdist_wheel
+OUTPUT_DIR="${THIS_SCRIPT_DIR}/output"
+mkdir ${OUTPUT_DIR}
 
-cp ${THIS_SCRIPT_DIR}/PKGBUILD-template ${THIS_SCRIPT_DIR}/PKGBUILD
+python3 ${THIS_SCRIPT_DIR}/setup.py build --build-base=${OUTPUT_DIR}/build egg_info --egg-base=${OUTPUT_DIR} sdist --dist-dir=${OUTPUT_DIR}/dist bdist_wheel --dist-dir=${OUTPUT_DIR}/dist
+
+
+cp ${THIS_SCRIPT_DIR}/PKGBUILD-template ${OUTPUT_DIR}/PKGBUILD
 
 package_name="$(python3 ${THIS_SCRIPT_DIR}/setup.py --fullname)"
-full_package_path="${THIS_SCRIPT_DIR}/dist/${package_name}.tar.gz"
+full_package_path="${OUTPUT_DIR}/dist/${package_name}.tar.gz"
 checksum=($(md5sum $full_package_path))
 line_for_PKGBUILD="md5sums=('$checksum')"
-echo $line_for_PKGBUILD >> ${THIS_SCRIPT_DIR}/PKGBUILD 
+echo $line_for_PKGBUILD >> ${OUTPUT_DIR}/PKGBUILD 
