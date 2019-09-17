@@ -1,10 +1,14 @@
 #!/bin/bash
 
-python3 setup.py sdist bdist_wheel
+THIS_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+cd ${THIS_SCRIPT_DIR}
 
-cp ./PKGBUILD-template ./PKGBUILD
+python3 ${THIS_SCRIPT_DIR}/setup.py sdist bdist_wheel
 
-full_package_name="./dist/$(python3 setup.py --fullname).tar.gz"
-checksum=($(md5sum ./$full_package_name))
+cp ${THIS_SCRIPT_DIR}/PKGBUILD-template ${THIS_SCRIPT_DIR}/PKGBUILD
+
+package_name="$(python3 ${THIS_SCRIPT_DIR}/setup.py --fullname)"
+full_package_path="${THIS_SCRIPT_DIR}/dist/${package_name}.tar.gz"
+checksum=($(md5sum $full_package_path))
 line_for_PKGBUILD="md5sums=('$checksum')"
-echo $line_for_PKGBUILD >> PKGBUILD 
+echo $line_for_PKGBUILD >> ${THIS_SCRIPT_DIR}/PKGBUILD 

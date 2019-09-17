@@ -1,11 +1,19 @@
 import setuptools
+import subprocess
 
 with open("README.md", "r") as fh:
     readme_file = fh.read()
 
+def get_git_describe():
+    command = ["git", "describe", "--abbrev=0"]
+    result = subprocess.run(
+        args=command, stdout=subprocess.PIPE, text=True).stdout
+    return result.strip()
+
+
 setuptools.setup(
     name="micsync-micdmy",
-    version="0.0.2",
+    version=get_git_describe(),
     author="micdmy",
     author_email="micdmy2@gmail.com",
     description="Local data synchronization tool based on rsync.",
