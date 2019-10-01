@@ -1,5 +1,7 @@
 ./vimsession.vim
 ./env
 ./env/*
+./output
+./output/*
 vimsession.vim
 
