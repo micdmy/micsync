@@ -7,4 +7,4 @@ cd ${THIS_SCRIPT_DIR}
 #python3 -m twine upload --repository-url https://test.pypi.org/legacy/ dist/*
 
 #OFFICIAL SERVER:
-python3 -m twine upload ${THIS_SCRIPT_DIR}/dist/*
+python3 -m twine upload ${THIS_SCRIPT_DIR}/output/dist/*
