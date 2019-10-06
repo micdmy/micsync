@@ -1,4 +1,4 @@
-# /usr/bin/python
+#!/usr/bin/python
 from .flags import Flags
 from .user import User
 from .rsync import Rsync

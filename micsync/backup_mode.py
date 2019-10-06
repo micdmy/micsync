@@ -1,4 +1,4 @@
-# /usr/bin/python
+#!/usr/bin/python
 from .mode import Mode
 from .user import User
 

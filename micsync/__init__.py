@@ -1,4 +1,4 @@
-# /usr/bin/python
+#!/usr/bin/python
 
 from .micsync import Micsync as Micsync
 name = "micsync_example_pkg"

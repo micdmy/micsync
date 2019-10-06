@@ -3,5 +3,7 @@
 ./env/*
 ./output
 ./output/*
+./build/
+./build/*
 vimsession.vim
 

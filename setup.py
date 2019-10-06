@@ -21,6 +21,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/micdmy",
     packages=setuptools.find_packages(),
+    scripts = ["micsync/micsync"],
     python_requires=">=3",
     classifiers=[
         "Programming Language :: Python :: 3.7",

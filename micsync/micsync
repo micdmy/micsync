@@ -1,8 +1,9 @@
 #!/usr/bin/python
 
+#  This script is supposed to be installed in /usr/bin
+
 import sys
-from .micsync import Micsync
-name = "micsync_example_pkg"
+from micsync import Micsync
 
 
 class MicsyncFriend(Micsync):
@@ -12,7 +13,7 @@ class MicsyncFriend(Micsync):
     def init_with_arguments(self, arguments):
         super()._init_with_arguments(arguments)
 
-
-program = MicsyncFriend(None, None, None)
-if program.init_with_arguments(sys.argv):
-    program.sync()
+if __name__ == "__main__":
+    program = MicsyncFriend(None, None, None)
+    if program.init_with_arguments(sys.argv):
+        program.sync()

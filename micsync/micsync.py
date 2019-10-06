@@ -1,4 +1,4 @@
-# /usr/bin/python
+#!/usr/bin/python
 
 from .paths import Paths, Path
 from .user import User

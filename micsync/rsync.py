@@ -1,4 +1,4 @@
-# /usr/bin/python
+#!/usr/bin/python
 from .user import User
 import subprocess
 
