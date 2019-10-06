@@ -11,6 +11,7 @@ python3 ${THIS_SCRIPT_DIR}/setup.py build --build-base=${OUTPUT_DIR}/build egg_i
 
 cp ${THIS_SCRIPT_DIR}/PKGBUILD-template ${OUTPUT_DIR}/PKGBUILD
 
+#Add checksum to PKGBUILD:
 package_name="$(python3 ${THIS_SCRIPT_DIR}/setup.py --fullname)"
 package_version="$(python3 ${THIS_SCRIPT_DIR}/setup.py --version)"
 full_package_path="${OUTPUT_DIR}/dist/${package_name}.tar.gz"
@@ -18,3 +19,12 @@ checksum=($(md5sum $full_package_path))
 line_for_PKGBUILD="md5sums=('$checksum')"
 echo $line_for_PKGBUILD >> ${OUTPUT_DIR}/PKGBUILD 
 sed --in-place "s/VERSION_PLACEHOLDER/${package_version}/" ${OUTPUT_DIR}/PKGBUILD
+
+#Create PKGBUILD for offline install, for developer convenience:
+offline_build_dir="${OUTPUT_DIR}/offline-PKGBUILD"
+mkdir ${offline_build_dir}
+cp ${OUTPUT_DIR}/PKGBUILD ${offline_build_dir}/
+package_file="${package_name}.tar.gz"
+ln ${OUTPUT_DIR}/dist/${package_file} ${offline_build_dir}/${package_file}
+sed --in-place "s/^source.*/source=('${package_file}')/" ${offline_build_dir}/PKGBUILD
+
