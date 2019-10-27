@@ -1,0 +1,24 @@
+#!/bin/bash
+#Script build.sh replaces 0.0.3.dev4 with current version while creating PKGBUILD.
+pkgname=micsync
+pkgver=0.0.3.dev4
+pkgrel=1
+pkgdesc=""
+arch=('any')
+url=""
+license=('GPL3')
+depends=('rsync>=3.1.3' 'python')
+makedepends=('python-setuptools')
+source=('https://files.pythonhosted.org/packages/source/m/micsync-micdmy/micsync-micdmy-0.0.3.dev4.tar.gz')
+
+build() {
+	cd ${pkgname}-micdmy-${pkgver}/
+	python setup.py build
+}
+
+package() {
+	cd ${pkgname}-micdmy-${pkgver}/
+	python setup.py install --root="$pkgdir/" --optimize=1 --skip-build
+}
+
+md5sums=('e18c1121ed3595cfddcdc5d8ea5961f7')
