@@ -12,7 +12,7 @@ class TestInstallation():
         assert re.search(version_regex + "(\\s*)", out) is not None
 
     def test_installed_pip(self, execute_success, version_regex, program_name, capfd):
-        out = execute_success(["pip", "show", program_name + "-micdmy"])
+        out = execute_success(["pip", "show", program_name])
         out_lines = out.splitlines()
         out_dict = {}
         for line in out_lines:
