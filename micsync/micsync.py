@@ -7,6 +7,7 @@ from .backup_mode import BackupMode
 from .work_mode import WorkMode
 from .transfer_mode import TransferMode
 from .tree_mode import TreeMode
+from .version_mode import VersionMode
 import getopt
 
 
@@ -14,7 +15,8 @@ class Micsync:
     modes = [BackupMode("backup", "msv"),
              WorkMode("work", "mdDsv"),
              TransferMode("transfer", "mdDsv"),
-             TreeMode("tree", "vs")]
+             TreeMode("tree", "vs"),
+             VersionMode("version", "")]
 
     def __init__(self, mode_name, options, paths):
         self.program_name = "micsync"
@@ -60,6 +62,7 @@ class Micsync:
                             Micsync.DifferentLocationException) as exception:
                         User.print_error(exception.args["message"])
                         return
+
                     return True
             except getopt.GetoptError:
                 pass
@@ -93,6 +96,8 @@ class Micsync:
         self._root_path = None
         self._paths = None
         paths = Paths.normalize(paths)
+        if self.mode and self.mode.name == "version":
+            return
         if not paths:
             raise Micsync.MissingPathsException({"message": "Paths missing"})
         for path in paths:
@@ -111,6 +116,9 @@ class Micsync:
     def sync(self):
         if not self.mode:
             raise Micsync.ModeException
+        if self.mode.name == "version":
+            self.mode.perform()
+            return
         if not self._paths:
             raise Micsync.MissingPathsException({"message": "Paths missing"})
         configs = Configurations.read_from_file(self.config_file_name)
@@ -135,9 +143,13 @@ class Micsync:
             opt_string = ""
             for char in mode.options:
                 opt_string += " [-" + char + "]"
+            if mode.name == "version":
+                paths = ""
+            else:
+                paths = " path..."
             User.print_indent(
                 self.program_name + " --" + mode.name
-                + opt_string + " path...")
+                + opt_string + paths)
 
     class MicsyncException(Exception):
         pass

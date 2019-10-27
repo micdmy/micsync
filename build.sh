@@ -6,6 +6,17 @@ cd ${THIS_SCRIPT_DIR}
 OUTPUT_DIR="${THIS_SCRIPT_DIR}/output"
 mkdir ${OUTPUT_DIR}
 
+ver_from_file="$( cat micsync/version.py | sed "s/__version__ = \"//" | sed "s/\"//" )"
+ver_from_git="$( git describe --abbrev=0 )"
+if [ $ver_from_file != $ver_from_git ]; then
+	read -p "Git tag not updated, continue? [Y/n]" -n 1 -r
+	echo
+	if [[ ! $REPLY =~ ^[Yy]$ ]]
+	then
+		    exit 1
+	fi
+fi
+
 python3 ${THIS_SCRIPT_DIR}/setup.py build --build-base=${OUTPUT_DIR}/build egg_info --egg-base=${OUTPUT_DIR} sdist --dist-dir=${OUTPUT_DIR}/dist bdist_wheel --dist-dir=${OUTPUT_DIR}/dist
 
 

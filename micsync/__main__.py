@@ -10,9 +10,10 @@ class MicsyncFriend(Micsync):
         super().__init__(mode_name, options, paths)
 
     def init_with_arguments(self, arguments):
-        super()._init_with_arguments(arguments)
+        return super()._init_with_arguments(arguments)
 
 
 program = MicsyncFriend(None, None, None)
 if program.init_with_arguments(sys.argv):
     program.sync()
+
