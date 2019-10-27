@@ -2,7 +2,7 @@
 
 import sys
 from .micsync import Micsync
-name = "micsync_example_pkg"
+name = "micsync"
 
 
 class MicsyncFriend(Micsync):

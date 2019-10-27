@@ -12,7 +12,7 @@ def get_git_describe():
 
 
 setuptools.setup(
-    name="micsync-micdmy",
+    name="micsync",
     version=get_git_describe(),
     author="micdmy",
     author_email="micdmy2@gmail.com",

@@ -5,5 +5,7 @@
 ./output/*
 ./build/
 ./build/*
+./tests/__pycache__/
+./tests/__pycache__/*
 vimsession.vim
 
