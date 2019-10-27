@@ -9,15 +9,15 @@ url=""
 license=('GPL3')
 depends=('rsync>=3.1.3' 'python')
 makedepends=('python-setuptools')
-source=('https://files.pythonhosted.org/packages/source/m/micsync-micdmy/micsync-micdmy-VERSION_PLACEHOLDER.tar.gz')
+source=('https://files.pythonhosted.org/packages/source/m/micsync/micsync-VERSION_PLACEHOLDER.tar.gz')
 
 build() {
-	cd ${pkgname}-micdmy-${pkgver}/
+	cd ${pkgname}-${pkgver}/
 	python setup.py build
 }
 
 package() {
-	cd ${pkgname}-micdmy-${pkgver}/
+	cd ${pkgname}-${pkgver}/
 	python setup.py install --root="$pkgdir/" --optimize=1 --skip-build
 }
 

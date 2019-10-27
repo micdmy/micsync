@@ -1,11 +1,11 @@
-./vimsession.vim
+./vimsession*
 ./env
 ./env/*
 ./output
 ./output/*
 ./build/
 ./build/*
-./tests/__pycache__/
+./tests/__pycache__
 ./tests/__pycache__/*
 vimsession.vim
 
