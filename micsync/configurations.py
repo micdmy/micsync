@@ -74,9 +74,9 @@ class Configurations:
                         User.print_indent("Paths in backup \
                                     cannot be its subpaths or identical.")
                         return
-            for k, b1 in enumerate(config["backup"]):
-                for l, w2 in enumerate(config["work"]):
-                    if k != l and Path.is_subpath(b1, w2):
+            for b1 in config["backup"]:
+                for w2 in config["work"]:
+                    if Path.is_subpath(b1, w2):
                         User.print_error(
                             "Bad backup or work paths in config \"" +
                             config["name"] + "\"")

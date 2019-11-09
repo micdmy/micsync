@@ -24,16 +24,24 @@ class Mode:
             self.applicable["backup"])
         self.applicable["work"] = Paths.filter_accessible(
                                             self.applicable["work"])
+        if not self.applicable["backup"]:
+            User.print_error("At least one BACKUP location should be accessible.")
+            return False
+        if not self.applicable["work"]:
+            User.print_error("At least one WORK location should be accessible.")
+            return False
         if self.applicable["fBackup"]:
             self.applicable["pathsOrigin"] = Paths.filter_accessible(
                 self.applicable["fBackup"])[0]
         else:
             self.applicable["pathsOrigin"] = Paths.filter_accessible(
                 self.applicable["fWork"])[0]
+
         if self.applicable["backup"] and self.applicable["work"] \
                 and self.applicable["pathsOrigin"]:
             return True
         else:
+
             return False
 
     def calculateSrcsAndDsts(self, paths, rootPath):
