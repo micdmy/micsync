@@ -20,7 +20,7 @@ class Micsync:
 
     def __init__(self, mode_name, options, paths):
         self.program_name = "micsync"
-        self.config_file_name = "./.micsync.json"
+        self.config_file_name = "~/.micsync.json"
         self.mode = None
         self._root_path = None
         self._paths = None
