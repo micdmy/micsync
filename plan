@@ -1,0 +1,12 @@
+co chece zrobic
+
+1. wrzucic xml configuracyjny do fakowego ~
+2. wygenerowac struktury plikow
+3. wywolywac polecenia (bash lub modul pythona micsync)
+   -dla kazdego sprawdzic stdout, wynik funkcji lub rzucone exceptiony (python)
+   -dla kazdego moc sprawdzic struktury plikow
+   -dla kazdego moc przekazac stdin
+
+ad 1 xml jako dane pythonowe, zeby moc hierarchicznie dopisywac lub usuwac
+
+ad 2 podoblie jak z 1, moc tworzyc struktury na podstawie juz istniejacych

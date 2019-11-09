@@ -99,7 +99,8 @@ class InitModule(InitStrategy):
         for test_case in self.test_cases:
             print("+++++++++++++++++++")
             print(str(test_case))
-            self._parse_bash_command(test_case)
+            bash_command = self._parse_bash_command(test_case)
+            
         
     def _parse_bash_command(self, test_case ):
         command = self.program_name
@@ -119,8 +120,7 @@ class InitModule(InitStrategy):
             else:
                 raise InitCases.CasesException({
                     "message": "Invalid operation in test_cases.", "invalid_operation:": operation_name})
-            
-            print(command + "\n")
+        return command            
     
 
         
