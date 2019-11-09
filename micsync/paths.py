@@ -25,7 +25,7 @@ class Paths:
     @classmethod
 # def normalizeList(paths):
     def normalize(cls, paths):
-        return [os.path.realpath(os.path.abspath(p)) for p in paths]
+        return [Path.normalize(p) for p in paths]
 
 
 class Path:
@@ -39,6 +39,7 @@ class Path:
 
     @classmethod
     def normalize(cls, path):
+        path = os.path.expanduser(path)
         return os.path.realpath(os.path.abspath(path))
 
     @classmethod

@@ -20,10 +20,10 @@ class Micsync:
 
     def __init__(self, mode_name, options, paths):
         self.program_name = "micsync"
-        self.config_file_name = "~/.micsync.json"
         self.mode = None
         self._root_path = None
         self._paths = None
+        self.set_config_file("~/.micsync.json")
         if mode_name:
             self.set_mode(mode_name)
             self.set_options(options)
@@ -70,7 +70,7 @@ class Micsync:
         return
 
     def set_config_file(self, config_file_name):
-        self.config_file_name = config_file_name
+        self.config_file_name = Path.normalize(config_file_name)
         
     def set_mode(self, mode_name):
         self.mode = None
