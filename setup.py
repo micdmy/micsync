@@ -17,6 +17,9 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     scripts = ["micsync/micsync"],
     python_requires=">=3.7",
+    setup_requires=[
+        "wheel"
+    ],
     classifiers=[
         "Programming Language :: Python :: 3.7",
         "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
