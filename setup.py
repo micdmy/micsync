@@ -16,7 +16,7 @@ setuptools.setup(
     url="https://github.com/micdmy",
     packages=setuptools.find_packages(),
     scripts = ["micsync/micsync"],
-    python_requires=">=3",
+    python_requires=">=3.7",
     classifiers=[
         "Programming Language :: Python :: 3.7",
         "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
