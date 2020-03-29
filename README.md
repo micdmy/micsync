@@ -1,5 +1,20 @@
+# MICSYNC - local discs synchronisation tool
 micsync is a tool that provides easy management of data kept on the disc and its backup or backups.
 It uses rsync for all file operations. Verbose option will show the exact rsync command used.
+
+# Installation
+
+## Using pip
+    pip install micsync
+
+Learn more: https://packaging.python.org/tutorials/installing-packages/
+
+## Using makepkg (for pacman users)
+	git clone https://github.com/micdmy/micsync.git
+	cd micsync/archive-pkgbuild/[last version]/
+	makepkg -sir
+
+Learn more: https://packaging.python.org/tutorials/installing-packages/ https://git-scm.com/docs/git-clone 
 
 micsync allows to configure WORKING and BACKUP locations.
 Location is a directory in filesystem and all subdirectories and files it contains.
@@ -83,7 +98,3 @@ Supported actions location (WORKING or BACKUP):
 			Options:
 			-s Suppress information about modifying directories.
 			-v Verbose mode.
-
-How to instal with pip:
-
-python3 -m pip install --index-url https://test.pypi.org/simple/ --no-deps example-pkg-your-username
