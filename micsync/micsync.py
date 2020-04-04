@@ -8,6 +8,7 @@ from .work_mode import WorkMode
 from .transfer_mode import TransferMode
 from .tree_mode import TreeMode
 from .version_mode import VersionMode
+from .version import _program_name
 import getopt
 
 
@@ -19,7 +20,7 @@ class Micsync:
              VersionMode("version", "")]
 
     def __init__(self, mode_name, options, paths):
-        self.program_name = "micsync"
+        self.program_name = _program_name
         self.mode = None
         self._root_path = None
         self._paths = None
@@ -31,7 +32,7 @@ class Micsync:
             self.set_paths(paths)
 
     def _init_with_arguments(self, arguments):
-        self.program_name = arguments[0]
+        self.program_name = _program_name
         for mode in Micsync.modes:
             try:
                 opts, args = getopt.getopt(

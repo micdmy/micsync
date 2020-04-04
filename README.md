@@ -2,6 +2,8 @@
 Micsync is a tool that provides easy management of data kept on the disc and its backup or backups.
 It uses rsync for all file operations. Verbose option will show the exact rsync command used.
 
+micsync on PyPi: [https://pypi.org/project/micsync-micdmy/](https://pypi.org/project/micsync-micdmy/)
+
 # Installation
 
 ## Using pip
@@ -10,12 +12,14 @@ It uses rsync for all file operations. Verbose option will show the exact rsync 
 ```
 Learn more: [python - installing packages](https://packaging.python.org/tutorials/installing-packages/)
 
-## Using makepkg (for pacman users)
+## Using git and makepkg (for pacman users)
 ```
 git clone https://github.com/micdmy/micsync.git
-cd micsync/archive-pkgbuild/[last version]/
+cd micsync/archive-pkgbuild/<last version>/
 makepkg -sir
 ```
+Replace `<last version>` with actual directory name.
+
 Learn more: [git clone](https://git-scm.com/docs/git-clone) [makepkg](https://wiki.archlinux.org/index.php/Makepkg)
 
 ## Check if micsync was installed succesfully
@@ -150,3 +154,58 @@ User interface and verbosity options:
 
 * `-s` Suppress information about modifying directories.
 * `-v` Verbose mode. Shows rsync command used to perform synchronization. Asks before doing anything.
+
+# Information for developers
+If you are a developer and want to contribute to micsync, you're welcomed!
+Don't hesitate to contact the author if you have questions.
+
+Required software:
+* `linux operating system`
+* `rsync`
+* `pacman`
+* `python >= 3.7` 
+* `python-pip`
+* `python-pytest`
+* `python-wheel`
+* `git`
+
+## Getting source code
+`git clone https://github.com/micdmy/micsync.git`
+
+## Workflow - development and testing on local machine
+1. Make the changes.
+2. Run `./build.sh` and see if there are any errors in output.
+3. Enter the directory with package for local (offline) instalation: `cd output/offline-PKGBUILD/`
+4. Install with makepkg: `makepkg -sir`
+5. Run tests from main repository directory. See: [tests/README.md](https://github.com/micdmy/micsync/tree/master/tests/README.md).
+6. Do some manual tests.
+7. Commit/push changes.
+
+## Workflow - releasing version
+1. You're ready with 'development and testing on local machine'.
+2. Change version number in file [micsync/version.py](https://github.com/micdmy/micsync/tree/master/micsync/version.py).
+3. Clean previous build artifacts with `./clean.sh`.
+4. Run `./build.sh`. You will be warned that git tag is not updated. Ignore it, press `y` and enter. See if there are any errors in output.
+5. Run `./deploy-aur.sh`. PKGBUILD file will be added to `archive-pkgbuild/<new version>/`.
+6. Stage `archive-pkgbuild/` and `micsync/version.py`.
+7. Commit, add tag `<new version>` and push with tags.
+
+## Workflow - testing released version
+1. Uninstall old version of micsync with pacman or pip.
+2. Install new version with pip. Run automatic tests. Make manual tests. Uninstall micsync.
+3. Install new version with pacman or makepkg. Run automatic tests. Make manual tests.
+
+## Project organisation
+Directory / File | In git repo | Purpose
+--------- | ---- | -------
+`./micsync/` | Yes. | Source code.
+`./micsync/version.py` | Yes | Contains version and program name. Version from this file is taken as program version by `build.sh`
+`.tests/` | Yes. | Automatic tests source code.
+`./archive-pk-pkgbuild/` | Yes. | Storage for PKGBUILD files for every version.
+`./output/` |  No. | After build, contains all build artifacts. Removed with `clean.sh`
+`./output/offline-PKGBUILD/` | No. | After build, contains the packaged program and specially prepared PKGBUILD file for local (offline) installation.
+`./build.sh` | Yes. | Script that builds the program.
+`./clean.sh` | Yes. | Script that cleans the build artifacts.
+`./deploy-aur.sh` | Yes | Script that copies `output/PKGBUILD` to `archive-pkgbuild/<new version>/`.
+`./deploy-pip.sh` | Yes | Script that sends new version to PyPi/[micsync](https://pypi.org/project/micsync-micdmy/).
+`./micsync/version.py` | Yes | Contains version and program name. Version from this file is taken as program version by `build.sh`

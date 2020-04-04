@@ -3,11 +3,11 @@
 pkgname=micsync
 pkgver=VERSION_PLACEHOLDER
 pkgrel=1
-pkgdesc=""
+pkgdesc="Local data synchronization tool based on rsync."
 arch=('any')
-url=""
+url="https://github.com/micdmy"
 license=('GPL3')
-depends=('rsync>=3.1.3' 'python')
+depends=('rsync>=3.1.3' 'python>=3.7')
 makedepends=('python-setuptools')
 source=('https://files.pythonhosted.org/packages/source/m/micsync/micsync-VERSION_PLACEHOLDER.tar.gz')
 

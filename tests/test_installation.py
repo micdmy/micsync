@@ -31,8 +31,8 @@ class TestInstallation():
                 "Home-page" : "https://github.com/micdmy",
                 "Author" : "micdmy",
                 "Author-email" : "micdmy2@gmail.com",
-                "License" : "UNKNOWN",
-                "Location" : "/usr/lib/python3.7/site-packages",
+                "License" : "GPLv3",
+                "Location" : ".*",
                 "Requires" : "",
                 "Required-by" : "",
                 }

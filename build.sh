@@ -6,9 +6,11 @@ cd ${THIS_SCRIPT_DIR}
 OUTPUT_DIR="${THIS_SCRIPT_DIR}/output"
 mkdir ${OUTPUT_DIR}
 
-ver_from_file="$( cat micsync/version.py | sed "s/__version__ = \"//" | sed "s/\"//" )"
+ver_from_file="$( cat micsync/version.py | sed -n "s/__version__ = \"//p" | sed "s/\"//" )"
 ver_from_git="$( git describe --abbrev=0 )"
-if [ $ver_from_file != $ver_from_git ]; then
+if [ "$ver_from_file" != "$ver_from_git" ]; then
+	echo "micsync/version.py: ${ver_from_file}"
+	echo "git describe:       ${ver_from_git}"
 	read -p "Git tag not updated, continue? [Y/n]" -n 1 -r
 	echo
 	if [[ ! $REPLY =~ ^[Yy]$ ]]

@@ -2,7 +2,8 @@
 
 import sys
 from .micsync import Micsync
-name = "micsync"
+from .version import _program_name
+name = _program_name
 
 
 class MicsyncFriend(Micsync):
