@@ -5,15 +5,10 @@ It uses rsync for all file operations. Verbose option will show the exact rsync 
 micsync on PyPi: [https://pypi.org/project/micsync-micdmy/](https://pypi.org/project/micsync-micdmy/)
 
 # Installation
-
-## Using pip
-```
-	pip install micsync
-```
-Learn more: [python - installing packages](https://packaging.python.org/tutorials/installing-packages/)
+If you are using pacman package manager (on Arch linux and derived systems), prefer installation with pacman over pip. If you install package with pip, pacman doesn't see it and it may lead to conflicts in future when installing or updating other packages.
 
 ## Using git and makepkg (for pacman users)
-```
+```bash
 git clone https://github.com/micdmy/micsync.git
 cd micsync/archive-pkgbuild/<last version>/
 makepkg -sir
@@ -21,6 +16,28 @@ makepkg -sir
 Replace `<last version>` with actual directory name.
 
 Learn more: [git clone](https://git-scm.com/docs/git-clone) [makepkg](https://wiki.archlinux.org/index.php/Makepkg)
+
+## Using pip
+As root:
+```
+	pip install micsync
+```
+Learn more: [python - installing packages](https://packaging.python.org/tutorials/installing-packages/)
+
+## Using git and python-setuptools
+```bash
+git clone https://github.com/micdmy/micsync.git
+cd micsync/
+./build.sh
+cd output/offline-PKGBUILD/
+tar -xzf micsync*
+cd micsync*/
+```
+
+As root:
+```bash
+python setup.py install --optimize=1
+```
 
 ## Check if micsync was installed succesfully
 ```bash
@@ -41,7 +58,7 @@ There are two types of locations which serve different purposes:
 * BACKUP location - examples of use
   - Can be used as backup copy of things in WORKING location.
   - Can be used as source of data for other BACKUPs (mirrors).
-  - Data from BACKUP can be copied back to WORKING, or even overide or remove data there.
+  - Data from BACKUP can be copied back to WORKING, or even override or remove data there.
   - BACKUP directories structure (tree, skeleton) can be copied (without files) to WORKING.
 
 Any number of WORKINGs can be linked with any number of BACKUPs.
@@ -90,8 +107,8 @@ micsync <sync-action> [options] <paths>
 micsync <other-action>
 ```
 
-`<sync-action>` tells micsync what kind of the syncronization operation should be performed between locations.
-Currently, there are 4 syncronization actions defined:
+`<sync-action>` tells micsync what kind of the synchronization operation should be performed between locations.
+Currently, there are 4 synchronization actions defined:
 * `--backup`
 * `--work`
 * `--transfer`
@@ -109,9 +126,9 @@ All of the given paths must be within defined configurations.
 It doesn't matter if a path is in WORKING or BACKUP location. It doesn't influence the direction of copying.
 You can tell micsync to, for example, do `--backup` operation, specifying path in BACKUP or in WORKING. In each case, copying from WORKING to BACKUP will be performed. The direction is defined by `<sync-action>`, not by `<paths>`.
 
-### Syncronisation actions
+### Synchronization actions
 * `--backup`
-  - Copies files and directories in `<paths>` from WORKING to all accesible BACKUPs.
+  - Copies files and directories in `<paths>` from WORKING to all accessible BACKUPs.
   - Asks which WORKING to choose if many are accessible.
   - It never deletes anything in BACKUP. Lists new.
   - Lists modified and asks for confirmation.
@@ -121,7 +138,7 @@ You can tell micsync to, for example, do `--backup` operation, specifying path i
 
 * `--work`
   - Copies files and directories in `<paths>` from chosen BACKUP to chosen WORKING.
-  - Asks which WORKING and/or BACKUP to choose if many are accesible.
+  - Asks which WORKING and/or BACKUP to choose if many are accessible.
   - Lists to-delete and asks for confirmation.
   - Lists modified and asks for confirmation.
   - Options: `-m -d -D -s -v`
@@ -138,12 +155,12 @@ You can tell micsync to, for example, do `--backup` operation, specifying path i
   - Destination: BACKUP
 
 * `--tree`
-  - Copy directies empty structure from backup to work and/or update existing.
+  - Copy directories empty structure from backup to work and/or update existing.
   - Options: `-s -v`
   - Source: BACKUP
   - Destination: WORKING
 
-### Options for syncronization actions
+### Options for synchronization actions
 Copying options:
 
 * `-m` Copy modified (overwrite) without asking.
@@ -154,6 +171,9 @@ User interface and verbosity options:
 
 * `-s` Suppress information about modifying directories.
 * `-v` Verbose mode. Shows rsync command used to perform synchronization. Asks before doing anything.
+
+# Bug reporting
+Have you found a bug? Please, report it [here](https://github.com/micdmy/micsync/issues).
 
 # Information for developers
 If you are a developer and want to contribute to micsync, you're welcomed!
@@ -167,6 +187,7 @@ Required software:
 * `python-pip`
 * `python-pytest`
 * `python-wheel`
+* `twine`
 * `git`
 
 ## Getting source code
@@ -175,7 +196,7 @@ Required software:
 ## Workflow - development and testing on local machine
 1. Make the changes.
 2. Run `./build.sh` and see if there are any errors in output.
-3. Enter the directory with package for local (offline) instalation: `cd output/offline-PKGBUILD/`
+3. Enter the directory with package for local (offline) installation: `cd output/offline-PKGBUILD/`
 4. Install with makepkg: `makepkg -sir`
 5. Run tests from main repository directory. See: [tests/README.md](https://github.com/micdmy/micsync/tree/master/tests/README.md).
 6. Do some manual tests.
@@ -186,6 +207,7 @@ Required software:
 2. Change version number in file [micsync/version.py](https://github.com/micdmy/micsync/tree/master/micsync/version.py).
 3. Clean previous build artifacts with `./clean.sh`.
 4. Run `./build.sh`. You will be warned that git tag is not updated. Ignore it, press `y` and enter. See if there are any errors in output.
+5. Run `./deploy-pip.sh`. `output/dist/micsync-0.0.4.dev0-py3-none-any.whl` and `output/dist/micsync-0.0.4.dev0.tar.gz` will be sent to `https://pypi.org/project/micsync/`. You will be asked for credentials.
 5. Run `./deploy-aur.sh`. PKGBUILD file will be added to `archive-pkgbuild/<new version>/`.
 6. Stage `archive-pkgbuild/` and `micsync/version.py`.
 7. Commit, add tag `<new version>` and push with tags.
@@ -195,7 +217,7 @@ Required software:
 2. Install new version with pip. Run automatic tests. Make manual tests. Uninstall micsync.
 3. Install new version with pacman or makepkg. Run automatic tests. Make manual tests.
 
-## Project organisation
+## Project organization
 Directory / File | In git repo | Purpose
 --------- | ---- | -------
 `./micsync/` | Yes. | Source code.

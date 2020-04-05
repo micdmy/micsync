@@ -14,12 +14,13 @@ setuptools.setup(
     description = "Local data synchronization tool based on rsync.",
     long_description = readme_file,
     long_description_content_type = "text/markdown",
-    url = "https://github.com/micdmy",
+    url = "https://github.com/micdmy/micsync/",
     packages = setuptools.find_packages(),
     scripts = ["micsync/micsync"],
     python_requires = ">=3.7",
     setup_requires = [
-        "wheel"
+        "wheel",
+        "twine"
     ],
     license = "GPLv3",
     classifiers = [

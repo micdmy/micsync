@@ -8,16 +8,20 @@ arch=('any')
 url="https://github.com/micdmy"
 license=('GPL3')
 depends=('rsync>=3.1.3' 'python>=3.7')
-makedepends=('python-setuptools')
+makedepends=('python-setuptools' 'python-wheel' 'twine')
 source=('https://files.pythonhosted.org/packages/source/m/micsync/micsync-VERSION_PLACEHOLDER.tar.gz')
 
 build() {
 	cd ${pkgname}-${pkgver}/
+	echo '### START python setup.py build ###'
 	python setup.py build
+	echo '### END python setup.py build ###'
 }
 
 package() {
 	cd ${pkgname}-${pkgver}/
+	echo '### START python setup.py install --root="$pkgdir/" --optimize=1 --skip-build ###'
 	python setup.py install --root="$pkgdir/" --optimize=1 --skip-build
+	echo '### END python setup.py install --root="$pkgdir/" --optimize=1 --skip-build ###'
 }
 
