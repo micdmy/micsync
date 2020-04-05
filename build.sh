@@ -19,8 +19,9 @@ if [ "$ver_from_file" != "$ver_from_git" ]; then
 	fi
 fi
 
+echo '###build.sh: START python setup.py build ###'
 python3 ${THIS_SCRIPT_DIR}/setup.py build --build-base=${OUTPUT_DIR}/build egg_info --egg-base=${OUTPUT_DIR} sdist --dist-dir=${OUTPUT_DIR}/dist bdist_wheel --dist-dir=${OUTPUT_DIR}/dist
-
+echo '###build.sh: END python setup.py build ###'
 
 cp ${THIS_SCRIPT_DIR}/PKGBUILD-template ${OUTPUT_DIR}/PKGBUILD
 

@@ -13,15 +13,15 @@ source=('https://files.pythonhosted.org/packages/source/m/micsync/micsync-VERSIO
 
 build() {
 	cd ${pkgname}-${pkgver}/
-	echo '### START python setup.py build ###'
+	echo '###PKGBUILD: START python setup.py build ###'
 	python setup.py build
-	echo '### END python setup.py build ###'
+	echo '###PKGBUILD: END python setup.py build ###'
 }
 
 package() {
 	cd ${pkgname}-${pkgver}/
-	echo '### START python setup.py install --root="$pkgdir/" --optimize=1 --skip-build ###'
+	echo '###PKGBUILD: START python setup.py install --root="$pkgdir/" --optimize=1 --skip-build ###'
 	python setup.py install --root="$pkgdir/" --optimize=1 --skip-build
-	echo '### END python setup.py install --root="$pkgdir/" --optimize=1 --skip-build ###'
+	echo '###PKGBUILD: END python setup.py install --root="$pkgdir/" --optimize=1 --skip-build ###'
 }
 
