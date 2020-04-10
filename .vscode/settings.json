@@ -1,0 +1,22 @@
+{
+    "search.exclude": {
+        ".eggs": true,
+        ".pytest_cache": true,
+        "micsync/__pycache__": true,
+        "output/**": true
+    },
+    "files.exclude": {
+        ".eggs": true,
+        ".pytest_cache": true,
+        "micsync/__pycache__": true,
+        "tests/__pycache__": true,
+        "output": true
+    },
+    "files.watcherExclude": {
+        ".eggs": true,
+        ".pytest_cache": true,
+        "micsync/__pycache__": true,
+        "tests/__pycache__": true,
+        "output": true
+    }
+}
