@@ -1,0 +1,28 @@
+#!/bin/bash
+#Script build.sh replaces 0.0.4.dev1 with current version while creating PKGBUILD.
+pkgname=micsync
+pkgver=0.0.4.dev1
+pkgrel=1
+pkgdesc="Local data synchronization tool based on rsync."
+arch=('any')
+url="https://github.com/micdmy"
+license=('GPL3')
+depends=('rsync>=3.1.3' 'python>=3.7')
+makedepends=('python-setuptools' 'python-wheel' 'twine')
+source=('https://files.pythonhosted.org/packages/source/m/micsync/micsync-0.0.4.dev1.tar.gz')
+
+build() {
+	cd ${pkgname}-${pkgver}/
+	echo '###PKGBUILD: START python setup.py build ###'
+	python setup.py build
+	echo '###PKGBUILD: END python setup.py build ###'
+}
+
+package() {
+	cd ${pkgname}-${pkgver}/
+	echo '###PKGBUILD: START python setup.py install --root="$pkgdir/" --optimize=1 --skip-build ###'
+	python setup.py install --root="$pkgdir/" --optimize=1 --skip-build
+	echo '###PKGBUILD: END python setup.py install --root="$pkgdir/" --optimize=1 --skip-build ###'
+}
+
+md5sums=('ed9dc5eaa9ccc7fe7bc17bbe6c6992d9')
