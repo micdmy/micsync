@@ -28,7 +28,7 @@ class TestInstallation():
                 "Name" : program_name,
                 "Version" : version_regex,
                 "Summary" : "Local data synchronization tool based on rsync.",
-                "Home-page" : "https://github.com/micdmy",
+                "Home-page" : "https://github.com/micdmy/micsync/",
                 "Author" : "micdmy",
                 "Author-email" : "micdmy2@gmail.com",
                 "License" : "GPLv3",
