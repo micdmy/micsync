@@ -42,8 +42,16 @@ class Rsync:
             if suspendTouchedDirs:
                 outpLines = Rsync._removeTouchedDirsFromOutput(outpLines, dst)
         else:
-            User.print_error("Something went wrong with rsync call.\
-                        Maybe it's api has changed? Please inform the author.")
+            command_version = ["rsync"] + ["--version"]
+            output_rsync_version = subprocess.run(
+                args=command_version, stdout=subprocess.PIPE, text=True).stdout
+            User.print_error("Rsync command:\n" +
+                             str(command) +
+                             "Rsync output:\n" +
+                             str(output) +
+                             "Rsync version:\n" + 
+                             str(output_rsync_version))
+
             return
         return outpLines
 

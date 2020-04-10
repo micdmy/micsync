@@ -61,7 +61,7 @@ class Micsync:
                         return
                     except (Micsync.InvalidPathsException,
                             Micsync.DifferentLocationException) as exception:
-                        User.print_error(exception.args["message"])
+                        User.print_problem(exception.args)
                         return
 
                     return True
@@ -79,16 +79,16 @@ class Micsync:
             if mode.name == mode_name:
                 self.mode = mode
         if not self.mode:
-            raise Micsync.ModeException({
-                "message": "Unknown mode.", "mode name": mode_name})
+            raise Micsync.ModeException(
+                "message", "Unknown mode.", "mode name", str(mode_name))
 
     def set_options(self, options):
         if not self.mode:
-            raise Micsync.OptionsException({"message": "Mode not set."})
+            raise Micsync.OptionsException("message", "Mode not set.")
         unknown_opts = [opt for opt in options if opt not in self.mode.options]
         if unknown_opts:
-            raise Micsync.OptionsException({
-                "message": "Unknown options.", "unknown": unknown_opts})
+            raise Micsync.OptionsException(
+                "message", "Unknown options.", "unknown", str(unknown_opts))
         self.mode.options = [opt for opt in options
                              if opt in self.mode.options]
         self.mode.updateFlags()
@@ -100,17 +100,17 @@ class Micsync:
         if self.mode and self.mode.name == "version":
             return
         if not paths:
-            raise Micsync.MissingPathsException({"message": "Paths missing"})
+            raise Micsync.MissingPathsException("message", "Paths missing")
         for path in paths:
             if not Path.is_accessible(path):
-                raise Micsync.InvalidPathsException({
-                    "message": str(path) + " : No such file or directory."})
+                raise Micsync.InvalidPathsException(
+                    "message", str(path) + " : No such file or directory.")
         root_path = Path.parent_dir(paths[0])
         for path in paths:
             if root_path != Path.parent_dir(path):
-                raise Micsync.DifferentLocationException({
-                    "message": "Paths must be in the same location."
-                    , "paths": [paths[0], path]})
+                raise Micsync.DifferentLocationException(
+                    "message", "Paths must be in the same location."
+                    , "paths", str([paths[0], path]))
         self._root_path = root_path
         self._paths = paths
 
@@ -121,7 +121,7 @@ class Micsync:
             self.mode.perform()
             return
         if not self._paths:
-            raise Micsync.MissingPathsException({"message": "Paths missing"})
+            raise Micsync.MissingPathsException("message", "Paths missing")
         configs = Configurations.read_from_file(self.config_file_name)
         configs = Configurations.verify(configs, self.config_file_name)
         if not configs:
@@ -139,7 +139,7 @@ class Micsync:
         self.mode.perform()
 
     def print_valid_syntax_info(self):
-        User.print_error("Valid syntax is:")
+        User.print_problem("Valid syntax is:")
         for mode in self.modes:
             opt_string = ""
             for char in mode.options:

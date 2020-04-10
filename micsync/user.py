@@ -62,8 +62,19 @@ class User:
                 return
 
     @classmethod
+    def print_problem(cls, msg):
+        print("micsync: Problem occurred:")
+        print(str(msg))
+
+    @classmethod
     def print_error(cls, msg):
-        print("micsync.py: Error: " + str(msg))
+        print("micsync: Error in program occurred.")
+        print("Please report this behavior at")
+        print("https://github.com/micdmy/micsync/issues")
+        print("or write an email to author.")
+        print("Attach error message below and describe how did you executed micsync.")
+        print("Error message:")
+        print(str(msg))
 
     @classmethod
     def print_info(cls, msg):

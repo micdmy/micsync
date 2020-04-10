@@ -26,7 +26,7 @@ class Configurations:
             try:
                 configuration = json.load(config_file)
             except json.JSONDecodeError as e:
-                User.print_error("Invalid JSON config file: " +
+                User.print_problem("Invalid JSON config file: " +
                                  config_file_name + ":")
                 User.print_indent("Line: " + str(e.lineno) + ", Column: " +
                                   str(e.colno) + ", Msg: " + e.msg)
@@ -39,19 +39,19 @@ class Configurations:
             return
         for i, config in enumerate(configs):
             if "name" not in config:
-                User.print_error("Deficient JSON config file: " +
+                User.print_problem("Deficient JSON config file: " +
                                  config_file_name + ":")
                 User.print_indent("config nr " + str(i) +
                                   " has no field \"name\".")
                 return
             elif "work" not in config:
-                User.print_error("Deficient JSON config file: " +
+                User.print_problem("Deficient JSON config file: " +
                                  config_file_name + ":")
                 User.print_indent("config \"" + str(i) +
                                   "\" has no field \"work\".")
                 return
             elif "backup" not in config:
-                User.print_error("Deficient JSON config file: " +
+                User.print_problem("Deficient JSON config file: " +
                                  config_file_name + ":")
                 User.print_indent("config \"" + str(i) +
                                   "\" has no field \"backup\".")
@@ -61,7 +61,7 @@ class Configurations:
             for k, w1 in enumerate(config["work"]):
                 for l, w2 in enumerate(config["work"]):
                     if k != l and Path.is_subpath(w1, w2):
-                        User.print_error("Bad work paths in config \"" +
+                        User.print_problem("Bad work paths in config \"" +
                                          config["name"] + "\"")
                         User.print_indent("Paths in work \
                                     cannot be its subpaths or identical.")
@@ -69,7 +69,7 @@ class Configurations:
             for k, b1 in enumerate(config["backup"]):
                 for l, b2 in enumerate(config["backup"]):
                     if k != l and Path.is_subpath(b1, b2):
-                        User.print_error("Bad backup paths in config \"" +
+                        User.print_problem("Bad backup paths in config \"" +
                                          config["name"] + "\"")
                         User.print_indent("Paths in backup \
                                     cannot be its subpaths or identical.")
@@ -77,7 +77,7 @@ class Configurations:
             for b1 in config["backup"]:
                 for w2 in config["work"]:
                     if Path.is_subpath(b1, w2):
-                        User.print_error(
+                        User.print_problem(
                             "Bad backup or work paths in config \"" +
                             config["name"] + "\"")
                         User.print_indent("Paths in backup and work \
@@ -113,19 +113,19 @@ class Configurations:
             if [True for p_config in paths_config if no_config(p_config)]:
                 continue
             if not Configurations._are_equal(paths_config):
-                User.print_error("In config: " + config["name"] + ":")
+                User.print_problem("In config: " + config["name"] + ":")
                 User.print_indent(
                     "All given paths should be in the same WORK xor BACKUP")
                 return
             elif paths_config:
                 first_cfg = paths_config[0]
                 if first_cfg["fWork"] and first_cfg["fBackup"]:
-                    User.print_error("In config: " + config["name"] + ":")
+                    User.print_problem("In config: " + config["name"] + ":")
                     User.print_indent("Given paths cannot be \
                                       both in WORK and BACKUP.")
                     return
                 elif _xor(first_cfg["fWork"], first_cfg["fBackup"]):
                     applicable_configs.append(first_cfg)
         if not applicable_configs:
-            User.print_error("None of given paths is in WORK or BACKUP")
+            User.print_problem("None of given paths is in WORK or BACKUP")
         return applicable_configs
