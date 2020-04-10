@@ -2,7 +2,7 @@
 Micsync is a tool that provides easy management of data kept on the disc and its backup or backups.
 It uses rsync for all file operations. Verbose option will show the exact rsync command used.
 
-micsync on PyPi: [https://pypi.org/project/micsync-micdmy/](https://pypi.org/project/micsync-micdmy/)
+micsync on PyPi: [https://pypi.org/project/micsync/](https://pypi.org/project/micsync/)
 
 # Installation
 If you are using pacman package manager (on Arch linux and derived systems), prefer installation with pacman over pip. If you install package with pip, pacman doesn't see it and it may lead to conflicts in future when installing or updating other packages.
@@ -229,5 +229,5 @@ Directory / File | In git repo | Purpose
 `./build.sh` | Yes. | Script that builds the program.
 `./clean.sh` | Yes. | Script that cleans the build artifacts.
 `./deploy-aur.sh` | Yes | Script that copies `output/PKGBUILD` to `archive-pkgbuild/<new version>/`.
-`./deploy-pip.sh` | Yes | Script that sends new version to PyPi/[micsync](https://pypi.org/project/micsync-micdmy/).
+`./deploy-pip.sh` | Yes | Script that sends new version to PyPi/[micsync](https://pypi.org/project/micsync/).
 `./micsync/version.py` | Yes | Contains version and program name. Version from this file is taken as program version by `build.sh`
