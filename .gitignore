@@ -1,12 +1,13 @@
-./.vimsession*
-./env
-./env/*
-./output
-./output/*
-./build
-./build/*
-./tests/__pycache__
-./tests/__pycache__/*
+.vimsession*
+env
+env/*
+output
+output/*
+build
+build/*
+tests/__pycache__
+tests/__pycache__/*
+micsync/__pycache__
+micsync/__pycache__/*
 .eggs/
-vimsession.vim
 
